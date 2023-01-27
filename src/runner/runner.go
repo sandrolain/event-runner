@@ -11,8 +11,8 @@ import (
 )
 
 type Event struct {
-	Type string
-	Data interface{}
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
 }
 
 type RunnerCache struct {

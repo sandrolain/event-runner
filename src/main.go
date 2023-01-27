@@ -1,33 +1,40 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/go-redis/redis"
+	"github.com/sandrolain/event-runner/src/consumer"
 	"github.com/sandrolain/event-runner/src/runner"
 	"rogchap.com/v8go"
 )
 
+func logf(msg string, a ...interface{}) {
+	fmt.Printf(msg, a...)
+	fmt.Println()
+}
+
 func main() {
-	run := runner.NewRunner()
-	err := run.CacheScript("src/scripts/test.js")
+	r := runner.NewRunner()
+	err := r.CacheScript("src/scripts/test.js")
 	if err != nil {
 		panic(err)
 	}
 
-	for i := 0; i < 10; i++ {
-		e := &runner.Event{
-			Type: "test.js",
-			Data: map[string]int{
-				"a": 3 * i,
-				"b": 4 + i,
-			},
+	consumer.RedisConnection(func(m *redis.Message) {
+		var e runner.Event
+		err := json.Unmarshal([]byte(m.Payload), &e)
+		if err != nil {
+			fmt.Printf("err: %+v\n", err)
+			return
 		}
 
-		run.Run(e, func(v *v8go.Value, err error) {
+		r.Run(&e, func(v *v8go.Value, err error) {
 			fmt.Printf("v: %+v\n", v)
 			fmt.Printf("err: %+v\n", err)
 		})
-	}
+	})
 
 	ok := make(chan bool, 1)
 
