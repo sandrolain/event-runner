@@ -17,4 +17,4 @@
 /.vscode
 /trash
 /vendor
-event-runner-localtest/data
+/localtest/data

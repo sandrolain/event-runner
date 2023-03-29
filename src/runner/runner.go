@@ -61,11 +61,10 @@ func (r *Runner) CacheScript(path string) (err error) {
 	return
 }
 
-func (r *Runner) Run(e *Event, fn func(*v8.Value, error)) {
+func (r *Runner) Run(e *Event, fn func(*v8.Value)) error {
 	cache, ok := r.CacheData[e.Type]
 	if !ok {
-		fn(nil, fmt.Errorf("script not found: %v", e.Type))
-		return
+		return fmt.Errorf("script not found: %v", e.Type)
 	}
 
 	iso := v8.NewIsolate()
@@ -73,14 +72,12 @@ func (r *Runner) Run(e *Event, fn func(*v8.Value, error)) {
 	opts := v8.CompileOptions{CachedData: cache.Data}
 	script, err := iso.CompileUnboundScript(cache.Source, cache.Name, opts)
 	if err != nil {
-		fn(nil, err)
-		return
+		return fmt.Errorf("cannot compile script: %v", err)
 	}
 
 	jsonData, err := json.Marshal(e.Data)
 	if err != nil {
-		fn(nil, err)
-		return
+		return fmt.Errorf("cannot marshal data: %v", err)
 	}
 
 	vals := make(chan *v8.Value, 1)
@@ -102,11 +99,11 @@ func (r *Runner) Run(e *Event, fn func(*v8.Value, error)) {
 
 	select {
 	case val := <-vals:
-		fn(val, nil)
+		fn(val)
 	case err := <-errs:
 		e := err.(*v8.JSError)
 		fmt.Printf("javascript stack trace: %+v", e)
-		fn(nil, err)
+		return err
 	case <-time.After(r.Timeout):
 		vm := ctx.Isolate()     // get the Isolate from the context
 		vm.TerminateExecution() // terminate the execution
@@ -114,6 +111,16 @@ func (r *Runner) Run(e *Event, fn func(*v8.Value, error)) {
 		err := <-errs // will get a termination error back from the running script
 		e := err.(*v8.JSError)
 		fmt.Printf("javascript stack trace: %+v", e)
-		fn(nil, err)
+		return err
 	}
+	return nil
+}
+
+func ParseEvent(payload *[]byte) (*Event, error) {
+	var e Event
+	err := json.Unmarshal([]byte(*payload), &e)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
 }

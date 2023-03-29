@@ -1,12 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 
-	"github.com/go-redis/redis"
-	"github.com/sandrolain/event-runner/src/consumer"
 	"github.com/sandrolain/event-runner/src/runner"
+	"github.com/sandrolain/event-runner/src/sources"
+	"github.com/sandrolain/event-runner/src/sources/kafka"
+	"github.com/sandrolain/event-runner/src/sources/redis"
 	"rogchap.com/v8go"
 )
 
@@ -15,29 +16,45 @@ func logf(msg string, a ...interface{}) {
 	fmt.Println()
 }
 
+const (
+	SCRIPTS_PATH = "src/scripts/"
+)
+
 func main() {
-	r := runner.NewRunner()
-	err := r.CacheScript("src/scripts/test.js")
+	files, err := ioutil.ReadDir(SCRIPTS_PATH)
 	if err != nil {
 		panic(err)
 	}
 
-	consumer.RedisConnection(func(m *redis.Message) {
-		var e runner.Event
-		err := json.Unmarshal([]byte(m.Payload), &e)
-		if err != nil {
-			fmt.Printf("err: %+v\n", err)
-			return
-		}
+	r := runner.NewRunner()
 
-		r.Run(&e, func(v *v8go.Value, err error) {
+	for _, file := range files {
+		filePath := fmt.Sprintf("%s%s", SCRIPTS_PATH, file.Name())
+		err := r.CacheScript(filePath)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	cb := func(cm *sources.ConsumerMessage, err error) error {
+		if err != nil {
+			fmt.Printf("err: %v\n", err)
+			return nil
+		}
+		e, err := runner.ParseEvent(&cm.Payload)
+		if err != nil {
+			return fmt.Errorf("cannot parse Payload: %v\n", err)
+		}
+		return r.Run(e, func(v *v8go.Value) {
 			fmt.Printf("v: %+v\n", v)
-			fmt.Printf("err: %+v\n", err)
 		})
-	})
+	}
+
+	ks := kafka.NewSource()
+	go ks.NewConsumer(cb)
+	rs := redis.NewSource()
+	go rs.NewConsumer(cb)
 
 	ok := make(chan bool, 1)
-
 	<-ok
-
 }
