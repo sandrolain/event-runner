@@ -14,6 +14,7 @@ type RunnerResult interface {
 	Message() EventMessage
 	Destination() (string, error)
 	Metadata() (map[string][]string, error)
+	Config() (map[string]string, error)
 	Data() (any, error)
 	Ack() error
 	Nak() error

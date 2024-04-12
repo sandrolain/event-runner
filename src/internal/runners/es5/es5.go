@@ -105,40 +105,52 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 	if err != nil {
 		return
 	}
-	hasResult := false
-	var data any
-	metadata := map[string][]string{}
-	vm.Set("setMetadata", func(name string, value string) {
-		hasResult = true
-		metadata[name] = []string{value}
-	})
-	vm.Set("addMetadata", func(name string, value string) {
-		hasResult = true
-		if metadata[name] == nil {
-			metadata[name] = []string{}
-		}
-		metadata[name] = append(metadata[name], value)
-	})
-	vm.Set("setData", func(d any) {
-		hasResult = true
-		fmt.Printf("setData: %+v\n", d)
-		data = d
-	})
-	_, err = vm.RunProgram(r.program)
-	if err != nil {
-		return
-	}
+
 	rpl, err := msg.ReplyTo()
 	if err != nil {
 		return
 	}
-	if hasResult {
-		res = &ES5RunnerResult{
-			message:     msg,
-			destination: rpl,
-			metadata:    metadata,
-			data:        data,
+
+	result := ES5RunnerResult{
+		message:     msg,
+		destination: rpl,
+		metadata:    map[string][]string{},
+		data:        nil,
+		config:      map[string]string{},
+	}
+
+	hasResult := false
+	vm.Set("setData", func(data any) {
+		hasResult = true
+		result.data = data
+	})
+
+	vm.Set("setMetadata", func(name string, value string) {
+		result.metadata[name] = []string{value}
+	})
+	vm.Set("addMetadata", func(name string, value string) {
+		if result.metadata[name] == nil {
+			result.metadata[name] = []string{}
 		}
+		result.metadata[name] = append(result.metadata[name], value)
+	})
+
+	vm.Set("setConfig", func(name string, value string) {
+		result.config[name] = value
+	})
+
+	v, err := vm.RunProgram(r.program)
+	if err != nil {
+		return
+	}
+
+	if !hasResult && v != nil {
+		hasResult = true
+		result.data = v
+	}
+
+	if hasResult {
+		res = &result
 	}
 	return
 }
@@ -148,6 +160,7 @@ type ES5RunnerResult struct {
 	destination string
 	metadata    map[string][]string
 	data        any
+	config      map[string]string
 }
 
 func (r ES5RunnerResult) Destination() (string, error) {
@@ -156,6 +169,11 @@ func (r ES5RunnerResult) Destination() (string, error) {
 
 func (r ES5RunnerResult) Metadata() (res map[string][]string, err error) {
 	res = r.metadata
+	return
+}
+
+func (r ES5RunnerResult) Config() (res map[string]string, err error) {
+	res = r.config
 	return
 }
 

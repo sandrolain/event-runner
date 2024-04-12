@@ -35,8 +35,8 @@ func (s *NatsEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
 				s.slog.Error("error marshaling data", "err", err)
 				continue
 			}
-			s.slog.Debug("publishing", "subject", s.config.Name, "size", len(serData))
-			msg := nats.NewMsg(s.config.Name)
+			s.slog.Debug("publishing", "subject", s.config.Topic, "size", len(serData))
+			msg := nats.NewMsg(s.config.Topic)
 			meta, err := res.Metadata()
 			if err != nil {
 				res.Nak()

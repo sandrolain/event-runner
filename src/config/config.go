@@ -33,14 +33,15 @@ type Runner struct {
 
 type Input struct {
 	ID     string `json:"id" validate:"required"`
-	Name   string `json:"name" validate:"required"`
+	Topic  string `json:"topic" validate:"required"`
 	Stream string `json:"stream"`
 	Client string `json:"client"`
 }
 
 type Output struct {
 	ID     string `json:"id" validate:"required"`
-	Name   string `json:"name" validate:"required"`
+	Topic  string `json:"topic" validate:"required"`
+	Method string `json:"method" validate:"oneof=POST PUT PATCH"`
 	Stream string `json:"stream"`
 	Client string `json:"client"`
 }

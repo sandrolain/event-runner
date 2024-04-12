@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
@@ -20,8 +21,6 @@ func (s *HTTPEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
 	go func() {
 		for !s.stopped {
 			res := <-c
-			s.slog.Debug("publishing", "subject", s.config.Name)
-
 			err := s.send(res)
 			if err != nil {
 				res.Nak()
@@ -41,6 +40,12 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 		return
 	}
 
+	cfg, err := result.Config()
+	if err != nil {
+		err = fmt.Errorf("error getting config: %w", err)
+		return
+	}
+
 	// TODO: check data conversion
 	// TODO: marshal from config
 	serData, err := json.Marshal(data)
@@ -49,12 +54,28 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 		return
 	}
 
+	method := strings.ToUpper(s.config.Method)
+	if cfg["method"] != "" {
+		method = strings.ToUpper(cfg["method"])
+	}
+	if method == "" {
+		method = "POST"
+	}
+
+	url := s.config.Topic
+	if cfg["topic"] != "" {
+		url = cfg["topic"]
+	}
+
+	s.slog.Debug("publishing", "method", method, "url", url, "size", len(serData))
+
 	client := &fasthttp.Client{}
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
-	req.Header.SetMethod("POST")
-	req.SetRequestURI(s.config.Name)
+	req.Header.SetMethod(method)
+	req.Header.Set("Content-Type", "application/json")
+	req.SetRequestURI(url)
 	req.SetBody(serData)
 
 	meta, err := result.Metadata()
@@ -82,6 +103,9 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 		err = fmt.Errorf("non-2XX status code: %d", res.StatusCode())
 		return
 	}
+
+	s.slog.Debug("published", "status", res.StatusCode())
+
 	return
 }
 

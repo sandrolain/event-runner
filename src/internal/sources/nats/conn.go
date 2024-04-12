@@ -44,7 +44,7 @@ func (c *NatsEventConnection) NewInput(cfg config.Input) (res itf.EventInput, er
 	res = &NatsEventInput{
 		connection: c.connection,
 		config:     cfg,
-		slog:       c.slog.With("subject", cfg.Name, "stream", cfg.Stream),
+		slog:       c.slog.With("subject", cfg.Topic, "stream", cfg.Stream),
 	}
 	return
 }
@@ -53,7 +53,7 @@ func (c *NatsEventConnection) NewOutput(cfg config.Output) (res itf.EventOutput,
 	res = &NatsEventOutput{
 		connection: c.connection,
 		config:     cfg,
-		slog:       c.slog.With("subject", cfg.Name, "stream", cfg.Stream),
+		slog:       c.slog,
 	}
 	return
 }

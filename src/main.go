@@ -10,6 +10,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/sandrolain/event-runner/src/config"
 	es5Runner "github.com/sandrolain/event-runner/src/internal/runners/es5"
+	httpSource "github.com/sandrolain/event-runner/src/internal/sources/http"
 	natsSource "github.com/sandrolain/event-runner/src/internal/sources/nats"
 )
 
@@ -40,15 +41,19 @@ func main() {
 	}
 	slog.SetDefault(slog.New(handler))
 
-	conn, err := natsSource.NewConnection(config.Connection{
+	natsConn, err := natsSource.NewConnection(config.Connection{
 		Token: "nats-secret",
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	source, err := conn.NewInput(config.Input{
-		Name: "test.hello",
+	httpConn, err := httpSource.NewConnection(config.Connection{
+		Port: 8080,
+	})
+
+	source, err := natsConn.NewInput(config.Input{
+		Topic: "test.hello",
 	})
 
 	runnerMan, err := es5Runner.New(config.Runner{
@@ -74,8 +79,9 @@ func main() {
 		panic(err)
 	}
 
-	out, err := conn.NewOutput(config.Output{
-		Name: "test.response",
+	out, err := httpConn.NewOutput(config.Output{
+		Method: "PUT",
+		Topic:  "http://127.0.0.1:8989/test/hello",
 	})
 	if err != nil {
 		panic(err)
