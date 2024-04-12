@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"encoding/json"
 	"log/slog"
 
 	"github.com/nats-io/nats.go"
@@ -15,7 +16,7 @@ type NatsEventOutput struct {
 	stopped    bool
 }
 
-func (s *NatsEventOutput) Receive(c chan itf.RunnerResult) (err error) {
+func (s *NatsEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
 	go func() {
 		for !s.stopped {
 			res := <-c
@@ -25,9 +26,31 @@ func (s *NatsEventOutput) Receive(c chan itf.RunnerResult) (err error) {
 				s.slog.Error("error getting data", "err", err)
 				continue
 			}
+
 			// TODO: check data conversion
-			b := data.([]byte)
-			err = s.connection.Publish(s.config.Name, b)
+			// TODO: marshal from config
+			serData, err := json.Marshal(data)
+			if err != nil {
+				res.Nak()
+				s.slog.Error("error marshaling data", "err", err)
+				continue
+			}
+			s.slog.Debug("publishing", "subject", s.config.Name, "size", len(serData))
+			msg := nats.NewMsg(s.config.Name)
+			meta, err := res.Metadata()
+			if err != nil {
+				res.Nak()
+				s.slog.Error("error getting metadata", "err", err)
+				continue
+			}
+			for k, v := range meta {
+				for _, vv := range v {
+					msg.Header.Add(k, vv)
+				}
+			}
+			msg.Data = serData
+
+			err = s.connection.PublishMsg(msg)
 			if err != nil {
 				res.Nak()
 				s.slog.Error("error publishing", "err", err)

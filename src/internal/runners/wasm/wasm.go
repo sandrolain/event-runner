@@ -1,6 +1,7 @@
-package es5
+package WASM
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
+	"github.com/tetratelabs/wazero"
 )
 
 type Config struct {
@@ -36,27 +38,27 @@ func New(c config.Runner) (res itf.RunnerManager, err error) {
 	if err != nil {
 		return
 	}
-	res = &ES5RunnerManager{
+	res = &WASMRunnerManager{
 		program: prog,
 	}
 	return
 }
 
-type ES5RunnerManager struct {
+type WASMRunnerManager struct {
 	program *goja.Program
 	runners []itf.Runner
 }
 
-func (r *ES5RunnerManager) New() (res itf.Runner, err error) {
-	res = &ES5Runner{
-		slog:    slog.Default().With("context", "ES5"),
+func (r *WASMRunnerManager) New() (res itf.Runner, err error) {
+	res = &WASMRunner{
+		slog:    slog.Default().With("context", "WASM"),
 		program: r.program,
 	}
 	r.runners = append(r.runners, res)
 	return
 }
 
-func (r *ES5RunnerManager) StopAll() error {
+func (r *WASMRunnerManager) StopAll() error {
 	for _, runner := range r.runners {
 		err := runner.Stop()
 		if err != nil {
@@ -66,13 +68,13 @@ func (r *ES5RunnerManager) StopAll() error {
 	return nil
 }
 
-type ES5Runner struct {
+type WASMRunner struct {
 	slog    *slog.Logger
 	program *goja.Program
 	stopped bool
 }
 
-func (r *ES5Runner) Ingest(c chan itf.EventMessage, oSize int) (o chan itf.RunnerResult, err error) {
+func (r *WASMRunner) Ingest(c chan itf.EventMessage, oSize int) (o chan itf.RunnerResult, err error) {
 	o = make(chan itf.RunnerResult, oSize)
 	go func() {
 		for !r.stopped {
@@ -93,12 +95,12 @@ func (r *ES5Runner) Ingest(c chan itf.EventMessage, oSize int) (o chan itf.Runne
 	return
 }
 
-func (r *ES5Runner) Stop() error {
+func (r *WASMRunner) Stop() error {
 	r.stopped = true
 	return nil
 }
 
-func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) {
+func (r *WASMRunner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 	err = vm.Set("message", msg)
@@ -133,7 +135,7 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 		return
 	}
 	if hasResult {
-		res = &ES5RunnerResult{
+		res = &WASMRunnerResult{
 			message:     msg,
 			destination: rpl,
 			metadata:    metadata,
@@ -143,34 +145,101 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 	return
 }
 
-type ES5RunnerResult struct {
+type WASMRunnerResult struct {
 	message     itf.EventMessage
 	destination string
 	metadata    map[string][]string
 	data        any
 }
 
-func (r ES5RunnerResult) Destination() (string, error) {
+func (r WASMRunnerResult) Destination() (string, error) {
 	return r.destination, nil
 }
 
-func (r ES5RunnerResult) Metadata() (res map[string][]string, err error) {
+func (r WASMRunnerResult) Metadata() (res map[string][]string, err error) {
 	res = r.metadata
 	return
 }
 
-func (r ES5RunnerResult) Data() (any, error) {
+func (r WASMRunnerResult) Data() (any, error) {
 	return r.data, nil
 }
 
-func (r ES5RunnerResult) Ack() error {
+func (r WASMRunnerResult) Ack() error {
 	return r.message.Ack()
 }
 
-func (r ES5RunnerResult) Nak() error {
+func (r WASMRunnerResult) Nak() error {
 	return r.message.Nak()
 }
 
-func (r ES5RunnerResult) Message() itf.EventMessage {
+func (r WASMRunnerResult) Message() itf.EventMessage {
 	return r.message
+}
+
+func executeWasm(ctx context.Context, wasmData []byte) (err error) {
+	// Create a new WebAssembly Runtime.
+	r := wazero.NewRuntime(ctx)
+	defer r.Close(ctx) // This closes everything this Runtime created.
+
+	// Instantiate WASI, which implements host functions needed for TinyGo to
+	// implement `panic`.
+	// wasi_snapshot_preview1.MustInstantiate(ctx, r)
+
+	// Instantiate the guest Wasm into the same runtime. It exports the `add`
+	// function, implemented in WebAssembly.
+	mod, err := r.Instantiate(ctx, wasmData)
+	if err != nil {
+		err = fmt.Errorf("failed to instantiate: %v", err)
+		return
+	}
+
+	// alloc := mod.ExportedFunction("alloc")
+	// if alloc == nil {
+	// 	err = fmt.Errorf("Invalid alloc type")
+	// 	return
+	// }
+
+	filter := mod.ExportedFunction("filter")
+	if filter == nil {
+		err = fmt.Errorf("Invalid filter type")
+		return
+	}
+
+	reqJson, err := gojay.Marshal(req)
+	if err != nil {
+		return
+	}
+
+	reqSize := uint64(len(reqJson))
+
+	allocRes, err := alloc.Call(ctx, reqSize)
+	if err != nil {
+		err = fmt.Errorf("failed to alloc memory: %v", err)
+		return
+	}
+
+	reqPtr := allocRes[0]
+
+	if ok := mod.Memory().Write(uint32(reqPtr), reqJson); !ok {
+		err = fmt.Errorf("failed to write memory")
+		return
+	}
+
+	resPtrSize, err := filter.Call(ctx, reqPtr, reqSize)
+	if err != nil {
+		err = fmt.Errorf("cannot call filter: %v", err)
+		return
+	}
+
+	resPrt := uint32(resPtrSize[0] >> 32)
+	resSize := uint32(resPtrSize[0])
+
+	resJson, ok := mod.Memory().Read(resPrt, resSize)
+	if !ok {
+		err = fmt.Errorf("cannot read memory")
+		return
+	}
+
+	return
 }

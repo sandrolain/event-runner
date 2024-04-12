@@ -37,7 +37,7 @@ type EventInput interface {
 // such as the source of the event, the headers, and the data
 type EventMessage interface {
 	Time() (time.Time, error)
-	Input() (string, error)
+	Topic() (string, error)
 	ReplyTo() (string, error)
 	Metadata(string) ([]string, error)
 	Data() ([]byte, error)
@@ -46,6 +46,6 @@ type EventMessage interface {
 }
 
 type EventOutput interface {
-	Receive(chan RunnerResult) error
+	Ingest(chan RunnerResult) error
 	Close() error
 }

@@ -3,29 +3,29 @@ package nats
 import (
 	"time"
 
-	"github.com/nats-io/nats.go"
+	"github.com/valyala/fasthttp"
 )
 
 type NatsEventMessage struct {
-	time time.Time
-	msg  *nats.Msg
+	time    time.Time
+	httpCtx *fasthttp.RequestCtx
 }
 
 func (m NatsEventMessage) Topic() (string, error) {
-	return m.msg.Subject, nil
+	return string(m.httpCtx.Path()), nil
 }
 
 func (m NatsEventMessage) ReplyTo() (string, error) {
-	return m.msg.Reply, nil
+	return string(m.httpCtx.Request.Header.Referer()), nil
 }
 
 func (m NatsEventMessage) Metadata(key string) (res []string, err error) {
-	value := m.msg.Header.Get(key)
+	value := string(m.httpCtx.Request.Header.Peek(key))
 	return []string{value}, nil
 }
 
 func (m NatsEventMessage) Data() ([]byte, error) {
-	return m.msg.Data, nil
+	return m.httpCtx.Request.Body(), nil
 }
 
 func (m NatsEventMessage) Time() (time.Time, error) {
@@ -33,9 +33,9 @@ func (m NatsEventMessage) Time() (time.Time, error) {
 }
 
 func (m NatsEventMessage) Ack() error {
-	return m.msg.Ack()
+	return nil
 }
 
 func (m NatsEventMessage) Nak() error {
-	return m.msg.Nak()
+	return nil
 }

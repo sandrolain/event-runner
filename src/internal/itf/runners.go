@@ -6,14 +6,14 @@ type RunnerManager interface {
 }
 
 type Runner interface {
-	Ingest(chan EventMessage, int) (chan RunnerResult, chan error, error)
+	Ingest(chan EventMessage, int) (chan RunnerResult, error)
 	Stop() error
 }
 
 type RunnerResult interface {
 	Message() EventMessage
 	Destination() (string, error)
-	Metadata(string) (map[string][]string, error)
+	Metadata() (map[string][]string, error)
 	Data() (any, error)
 	Ack() error
 	Nak() error

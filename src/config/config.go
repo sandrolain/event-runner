@@ -18,16 +18,17 @@ type Connection struct {
 	ID       string `json:"id" validate:"required"`
 	Type     string `json:"type" validate:"required,oneof=nats redis http"`
 	URL      string `json:"url" validate:"required,url"`
+	Port     int    `json:"port" validate:"required"`
 	Token    string `json:"token"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 type Runner struct {
-	ID         string `json:"id" validate:"required"`
-	Type       string `json:"type" validate:"required,oneof=es5 risor"`
-	ScriptPath string `json:"script_path" validate:"required,file"`
-	ScriptB64  string `json:"script_b64" validate:"required,base64"`
+	ID          string `json:"id" validate:"required"`
+	Type        string `json:"type" validate:"required,oneof=es5 risor"`
+	ProgramPath string `json:"program_path" validate:"required,file"`
+	ProgramB64  string `json:"program_b64" validate:"required,base64"`
 }
 
 type Input struct {
