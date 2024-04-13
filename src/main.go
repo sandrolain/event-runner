@@ -9,8 +9,8 @@ import (
 	"github.com/sandrolain/event-runner/src/config"
 	es5Runner "github.com/sandrolain/event-runner/src/internal/runners/es5"
 	"github.com/sandrolain/event-runner/src/internal/setup"
-	httpSource "github.com/sandrolain/event-runner/src/internal/sources/http"
-	natsSource "github.com/sandrolain/event-runner/src/internal/sources/nats"
+	httpSource "github.com/sandrolain/event-runner/src/internal/sources/httpsource"
+	natsSource "github.com/sandrolain/event-runner/src/internal/sources/natssource"
 )
 
 func main() {
@@ -53,7 +53,7 @@ func main() {
 		panic(err)
 	}
 
-	runnerMan, err := es5Runner.New(config.Runner{
+	runnerMan, err := es5Runner.NewRunner(config.Runner{
 		ID:          "es5",
 		ProgramPath: "./.trash/prog.js",
 	})

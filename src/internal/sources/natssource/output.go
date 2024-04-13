@@ -1,4 +1,4 @@
-package nats
+package natssource
 
 import (
 	"encoding/json"

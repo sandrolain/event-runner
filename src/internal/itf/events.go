@@ -25,7 +25,7 @@ type EventConnection interface {
 // event. When an error occurs the implementation should return the
 // error.
 type EventInput interface {
-	Receive(int) (chan EventMessage, error)
+	Receive() (chan EventMessage, error)
 	Close() error
 }
 

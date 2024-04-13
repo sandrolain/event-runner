@@ -1,4 +1,4 @@
-package nats
+package httpsource
 
 import (
 	"time"

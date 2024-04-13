@@ -1,4 +1,4 @@
-package nats
+package natssource
 
 import (
 	"log/slog"
@@ -17,8 +17,8 @@ type NatsEventInput struct {
 	c            chan itf.EventMessage
 }
 
-func (s *NatsEventInput) Receive(size int) (c chan itf.EventMessage, err error) {
-	c = make(chan itf.EventMessage, size)
+func (s *NatsEventInput) Receive() (c chan itf.EventMessage, err error) {
+	c = make(chan itf.EventMessage, s.config.Buffer)
 	s.c = c
 	// TODO NATS stream with consumer group
 	s.subscription, err = s.connection.Subscribe(s.config.Topic, func(m *nats.Msg) {

@@ -17,7 +17,7 @@ type Config struct {
 	ProgramPath string `validate:"required"`
 }
 
-func New(c config.Runner) (res itf.RunnerManager, err error) {
+func NewRunner(c config.Runner) (res itf.RunnerManager, err error) {
 	var program []byte
 	if c.ProgramPath != "" {
 		program, err = os.ReadFile(c.ProgramPath)
@@ -37,6 +37,7 @@ func New(c config.Runner) (res itf.RunnerManager, err error) {
 		return
 	}
 	res = &ES5RunnerManager{
+		config:  c,
 		program: prog,
 	}
 	return
@@ -45,10 +46,12 @@ func New(c config.Runner) (res itf.RunnerManager, err error) {
 type ES5RunnerManager struct {
 	program *goja.Program
 	runners []itf.Runner
+	config  config.Runner
 }
 
 func (r *ES5RunnerManager) New() (res itf.Runner, err error) {
 	res = &ES5Runner{
+		config:  r.config,
 		slog:    slog.Default().With("context", "ES5"),
 		program: r.program,
 	}
@@ -67,13 +70,14 @@ func (r *ES5RunnerManager) StopAll() error {
 }
 
 type ES5Runner struct {
+	config  config.Runner
 	slog    *slog.Logger
 	program *goja.Program
 	stopped bool
 }
 
-func (r *ES5Runner) Ingest(c chan itf.EventMessage, oSize int) (o chan itf.RunnerResult, err error) {
-	o = make(chan itf.RunnerResult, oSize)
+func (r *ES5Runner) Ingest(c chan itf.EventMessage) (o chan itf.RunnerResult, err error) {
+	o = make(chan itf.RunnerResult, r.config.Buffer)
 	go func() {
 		for !r.stopped {
 			msg := <-c

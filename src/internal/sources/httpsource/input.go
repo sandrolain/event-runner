@@ -1,4 +1,4 @@
-package nats
+package httpsource
 
 import (
 	"log/slog"
@@ -21,8 +21,8 @@ func (s *HTTPEventInput) ingest(ctx *fasthttp.RequestCtx) {
 	s.requests <- ctx
 }
 
-func (s *HTTPEventInput) Receive(size int) (c chan itf.EventMessage, err error) {
-	c = make(chan itf.EventMessage, size)
+func (s *HTTPEventInput) Receive() (c chan itf.EventMessage, err error) {
+	c = make(chan itf.EventMessage, s.config.Buffer)
 	s.c = c
 	go func() {
 		for r := range s.requests {

@@ -1,4 +1,4 @@
-package nats
+package httpsource
 
 import (
 	"fmt"
@@ -32,19 +32,23 @@ func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
 		// TODO: manage TLS?
 		// TODO: refactor using net.Listener
 		e := fasthttp.ListenAndServe(addr, func(ctx *fasthttp.RequestCtx) {
+			// TODO: permit other methods?
 			if !ctx.IsPut() {
 				ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
 				return
 			}
 			path := string(ctx.Path())
+			found := false
 			for _, input := range conn.inputs {
 				if path == input.config.Topic {
 					input.ingest(ctx)
 					ctx.SetStatusCode(fasthttp.StatusAccepted)
-					return
+					found = true
 				}
 			}
-			ctx.SetStatusCode(fasthttp.StatusNotFound)
+			if !found {
+				ctx.SetStatusCode(fasthttp.StatusNotFound)
+			}
 		})
 		if e != nil {
 			err = fmt.Errorf("failed to start server: %w", e)

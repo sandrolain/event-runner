@@ -35,5 +35,7 @@ func LoadConfig(filePath string) (cfg config.Config, err error) {
 	}
 	yaml.Unmarshal(yamlFile, &cfg)
 	err = defaults.Set(&cfg)
+
+	// TODO: add config validation ID bindings
 	return
 }
