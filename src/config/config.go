@@ -1,10 +1,17 @@
 package config
 
 type Config struct {
+	Logger      Logger
 	Connections []Connection
 	Runners     []Runner
 	Inputs      []Input
 	Outputs     []Output
+}
+
+type Logger struct {
+	Level  string `json:"level" default:"INFO" validate:"required,oneof=DEBUG INFO WARN ERROR"`
+	Format string `json:"format" default:"TEXT" validate:"required,oneof=TEXT JSON"`
+	Color  bool   `json:"color"`
 }
 
 type Line struct {

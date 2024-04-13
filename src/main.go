@@ -4,42 +4,33 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"github.com/lmittmann/tint"
 	"github.com/sandrolain/event-runner/src/config"
 	es5Runner "github.com/sandrolain/event-runner/src/internal/runners/es5"
+	"github.com/sandrolain/event-runner/src/internal/setup"
 	httpSource "github.com/sandrolain/event-runner/src/internal/sources/http"
 	natsSource "github.com/sandrolain/event-runner/src/internal/sources/nats"
 )
 
 func main() {
-	logLevel := "DEBUG"
-	logFormat := "TEXT"
-
-	slogLevel := new(slog.LevelVar)
-
-	switch strings.ToUpper(logLevel) {
-	case "DEBUG":
-		slogLevel.Set(slog.LevelDebug)
-	case "INFO":
-		slogLevel.Set(slog.LevelInfo)
-	case "WARN":
-		slogLevel.Set(slog.LevelWarn)
-	case "ERROR":
-		slogLevel.Set(slog.LevelError)
-	default:
-		slogLevel.Set(slog.LevelInfo)
+	env, err := setup.LoadEnvConfig()
+	if err != nil {
+		slog.Error("error loading env config", "err", err)
+		os.Exit(1)
 	}
 
-	var handler slog.Handler
-	if strings.ToUpper(logFormat) == "JSON" {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slogLevel, AddSource: true})
-	} else {
-		handler = tint.NewHandler(os.Stdout, &tint.Options{Level: slogLevel, AddSource: true})
+	cfg, err := setup.LoadConfig(env.ConfigPath)
+	if err != nil {
+		slog.Error("error loading config", "err", err)
+		os.Exit(1)
 	}
-	slog.SetDefault(slog.New(handler))
+
+	err = setup.SetupLogger(cfg.Logger)
+	if err != nil {
+		slog.Error("error setting up logger", "err", err)
+		os.Exit(1)
+	}
 
 	natsConn, err := natsSource.NewConnection(config.Connection{
 		Token: "nats-secret",
@@ -51,10 +42,16 @@ func main() {
 	httpConn, err := httpSource.NewConnection(config.Connection{
 		Port: 8080,
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	source, err := natsConn.NewInput(config.Input{
 		Topic: "test.hello",
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	runnerMan, err := es5Runner.New(config.Runner{
 		ID:          "es5",
@@ -105,7 +102,4 @@ func main() {
 
 	<-exitCh
 	os.Exit(0)
-}
-
-func LogLevel(level string) {
 }
