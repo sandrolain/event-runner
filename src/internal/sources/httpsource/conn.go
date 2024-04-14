@@ -11,12 +11,14 @@ import (
 )
 
 func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
-	port := cfg.Port
-	if port == 0 {
-		port = 8080
+	if cfg.Port == 0 {
+		cfg.Port = 8080
+	}
+	if cfg.Hostname == "" {
+		cfg.Hostname = "0.0.0.0"
 	}
 
-	addr := fmt.Sprintf(":%d", port)
+	addr := fmt.Sprintf("%s:%d", cfg.Hostname, cfg.Port)
 
 	conn := &HTTPEventConnection{
 		inputs:  make([]*HTTPEventInput, 0),

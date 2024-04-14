@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v9"
-	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/sandrolain/event-runner/src/config"
 	"gopkg.in/yaml.v3"
@@ -34,7 +33,15 @@ func LoadConfig(filePath string) (cfg config.Config, err error) {
 		return
 	}
 	yaml.Unmarshal(yamlFile, &cfg)
-	err = defaults.Set(&cfg)
+
+	err = config.ApplyDefaults(&cfg)
+	if err != nil {
+		return
+	}
+	err = config.Validate(&cfg)
+	if err != nil {
+		return
+	}
 
 	// TODO: add config validation ID bindings
 	return

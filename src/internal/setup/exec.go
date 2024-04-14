@@ -5,7 +5,7 @@ import (
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
-	"github.com/sandrolain/event-runner/src/internal/runners/es5"
+	"github.com/sandrolain/event-runner/src/internal/runners/es5runner"
 	"github.com/sandrolain/event-runner/src/internal/sources/httpsource"
 	"github.com/sandrolain/event-runner/src/internal/sources/natssource"
 )
@@ -18,6 +18,26 @@ type Executor struct {
 func Exec(cfg config.Config) (err error) {
 	exec := &Executor{
 		connections: make(map[string]itf.EventConnection),
+	}
+
+	getInput := func(id string) (res config.Input, err error) {
+		for _, cfg := range cfg.Inputs {
+			if cfg.ID == id {
+				return cfg, nil
+			}
+		}
+		err = fmt.Errorf("input \"%s\" not found", id)
+		return
+	}
+
+	getOutput := func(id string) (res config.Output, err error) {
+		for _, cfg := range cfg.Outputs {
+			if cfg.ID == id {
+				return cfg, nil
+			}
+		}
+		err = fmt.Errorf("output \"%s\" not found", id)
+		return
 	}
 
 	for _, cfg := range cfg.Connections {
@@ -50,12 +70,24 @@ func Exec(cfg config.Config) (err error) {
 			return
 		}
 
-		in, e := conn.NewInput(cfg.Input)
+		input, e := getInput(cfg.Input)
+		if err != nil {
+			err = fmt.Errorf("failed to get input: %w", e)
+			return
+		}
+
+		output, e := getOutput(cfg.Output)
+		if err != nil {
+			err = fmt.Errorf("failed to get output: %w", e)
+			return
+		}
+
+		in, e := conn.NewInput(input)
 		if err != nil {
 			err = fmt.Errorf("failed to create input: %w", e)
 			return
 		}
-		out, e := conn.NewOutput(cfg.Output)
+		out, e := conn.NewOutput(output)
 		if err != nil {
 			err = fmt.Errorf("failed to create output: %w", e)
 			return
@@ -103,7 +135,7 @@ func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
 func NewRunnerManager(cfg config.Runner) (res itf.RunnerManager, err error) {
 	switch cfg.Type {
 	case "es5":
-		return es5.NewRunner(cfg)
+		return es5runner.NewRunner(cfg)
 	}
 	err = fmt.Errorf("unknown runner type: %s", cfg.Type)
 	return

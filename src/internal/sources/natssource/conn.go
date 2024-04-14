@@ -1,6 +1,7 @@
 package natssource
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/nats-io/nats.go"
@@ -9,9 +10,17 @@ import (
 )
 
 func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
-	url := cfg.URL
-	if url == "" {
+	var url string
+	if cfg.Hostname == "" && cfg.Port == 0 {
 		url = nats.DefaultURL
+	} else {
+		if cfg.Port == 0 {
+			cfg.Port = 4222
+		}
+		if cfg.Hostname == "" {
+			cfg.Hostname = "localhost"
+		}
+		url = fmt.Sprintf("nats://%s:%d", cfg.Hostname, cfg.Port)
 	}
 
 	var opts []nats.Option

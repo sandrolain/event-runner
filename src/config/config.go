@@ -5,6 +5,8 @@ type Config struct {
 	Connections []Connection
 	Runners     []Runner
 	Lines       []Line
+	Inputs      []Input
+	Outputs     []Output
 }
 
 type Logger struct {
@@ -16,7 +18,7 @@ type Logger struct {
 type Connection struct {
 	ID       string `json:"id" validate:"required"`
 	Type     string `json:"type" validate:"required,oneof=nats redis http"`
-	URL      string `json:"url" validate:"required,url"`
+	Hostname string `json:"hostname" validate:"required"`
 	Port     int    `json:"port" validate:"required"`
 	Token    string `json:"token"`
 	Username string `json:"username"`
@@ -34,9 +36,9 @@ type Runner struct {
 type Line struct {
 	ID         string `json:"id" validate:"required"`
 	Connection string `json:"connection" validate:"required"`
-	Input      Input  `json:"input" validate:"required"`
+	Input      string `json:"input" validate:"required"`
 	Runner     string `json:"runner" validate:"required"`
-	Output     Output `json:"output" validate:"required"`
+	Output     string `json:"output" validate:"required"`
 }
 
 type Input struct {

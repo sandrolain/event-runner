@@ -1,4 +1,4 @@
-package es5
+package es5runner
 
 import (
 	"encoding/base64"
