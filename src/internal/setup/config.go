@@ -38,6 +38,7 @@ func LoadConfig(filePath string) (cfg config.Config, err error) {
 	if err != nil {
 		return
 	}
+
 	err = config.Validate(&cfg)
 	if err != nil {
 		return

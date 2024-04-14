@@ -25,38 +25,8 @@ func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
 		config:  cfg,
 		slog:    slog.Default().With("context", "HTTP"),
 		inputMx: sync.RWMutex{},
+		address: addr,
 	}
-
-	slog.Info("starting server", "addr", addr)
-
-	// Create server
-	go func() {
-		// TODO: manage TLS?
-		// TODO: refactor using net.Listener
-		e := fasthttp.ListenAndServe(addr, func(ctx *fasthttp.RequestCtx) {
-			// TODO: permit other methods?
-			if !ctx.IsPut() {
-				ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
-				return
-			}
-			path := string(ctx.Path())
-			found := false
-			for _, input := range conn.inputs {
-				if path == input.config.Topic {
-					input.ingest(ctx)
-					ctx.SetStatusCode(fasthttp.StatusAccepted)
-					found = true
-				}
-			}
-			if !found {
-				ctx.SetStatusCode(fasthttp.StatusNotFound)
-			}
-		})
-		if e != nil {
-			err = fmt.Errorf("failed to start server: %w", e)
-			return
-		}
-	}()
 
 	res = conn
 
@@ -68,6 +38,45 @@ type HTTPEventConnection struct {
 	slog    *slog.Logger
 	config  config.Connection
 	inputMx sync.RWMutex
+	address string
+	started bool
+}
+
+func (c *HTTPEventConnection) startServer() (err error) {
+	if c.started {
+		return
+	}
+	slog.Info("starting HTTP server", "addr", c.address)
+	c.started = true
+
+	// TODO: manage TLS?
+	// TODO: refactor using net.Listener
+	e := fasthttp.ListenAndServe(c.address, func(ctx *fasthttp.RequestCtx) {
+		// TODO: permit other methods?
+		if !ctx.IsPut() {
+			ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+			return
+		}
+		path := string(ctx.Path())
+		found := false
+		for _, input := range c.inputs {
+			if path == input.config.Topic {
+				input.ingest(ctx)
+				ctx.SetStatusCode(fasthttp.StatusAccepted)
+				found = true
+			}
+		}
+		if !found {
+			ctx.SetStatusCode(fasthttp.StatusNotFound)
+		}
+	})
+
+	if e != nil {
+		err = fmt.Errorf("failed to start HTTP server: %w", e)
+	}
+	c.started = false
+
+	return
 }
 
 func (c *HTTPEventConnection) NewInput(cfg config.Input) (res itf.EventInput, err error) {
@@ -79,6 +88,7 @@ func (c *HTTPEventConnection) NewInput(cfg config.Input) (res itf.EventInput, er
 		slog:       c.slog.With("topic", cfg.Topic),
 		requests:   make(chan *fasthttp.RequestCtx, 10),
 	}
+	c.startServer()
 	c.inputs = append(c.inputs, in)
 	res = in
 	return

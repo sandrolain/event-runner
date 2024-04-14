@@ -17,7 +17,8 @@ type Executor struct {
 
 func Exec(cfg config.Config) (err error) {
 	exec := &Executor{
-		connections: make(map[string]itf.EventConnection),
+		connections:     make(map[string]itf.EventConnection),
+		runnersManagers: make(map[string]itf.RunnerManager),
 	}
 
 	getInput := func(id string) (res config.Input, err error) {
@@ -59,35 +60,43 @@ func Exec(cfg config.Config) (err error) {
 	}
 
 	for _, cfg := range cfg.Lines {
-		conn, ok := exec.connections[cfg.Connection]
+		runMan, ok := exec.runnersManagers[cfg.RunnerID]
 		if !ok {
-			err = fmt.Errorf("connection \"%s\" not found", cfg.Connection)
-			return
-		}
-		runMan, ok := exec.runnersManagers[cfg.Runner]
-		if !ok {
-			err = fmt.Errorf("runner \"%s\" not found", cfg.Runner)
+			err = fmt.Errorf("runner \"%s\" not found", cfg.RunnerID)
 			return
 		}
 
-		input, e := getInput(cfg.Input)
+		input, e := getInput(cfg.InputID)
 		if err != nil {
 			err = fmt.Errorf("failed to get input: %w", e)
 			return
 		}
 
-		output, e := getOutput(cfg.Output)
+		output, e := getOutput(cfg.OutputID)
 		if err != nil {
 			err = fmt.Errorf("failed to get output: %w", e)
 			return
 		}
 
-		in, e := conn.NewInput(input)
+		inputConn, ok := exec.connections[input.ConnectionID]
+		if !ok {
+			err = fmt.Errorf("connection \"%s\" not found", input.ConnectionID)
+			return
+		}
+
+		outputConn, ok := exec.connections[output.ConnectionID]
+		if !ok {
+			err = fmt.Errorf("connection \"%s\" not found", output.ConnectionID)
+			return
+		}
+
+		in, e := inputConn.NewInput(input)
 		if err != nil {
 			err = fmt.Errorf("failed to create input: %w", e)
 			return
 		}
-		out, e := conn.NewOutput(output)
+
+		out, e := outputConn.NewOutput(output)
 		if err != nil {
 			err = fmt.Errorf("failed to create output: %w", e)
 			return

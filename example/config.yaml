@@ -1,0 +1,33 @@
+logger:
+  level: DEBUG
+  format: TEXT
+  color: true
+connections:
+  - id: nats
+    type: nats
+    hostname: localhost
+    port: 4222
+    token: nats-secret
+  - id: http
+    type: http
+    hostname: localhost
+    port: 8888
+inputs:
+  - id: nats-input
+    connection_id: nats
+    topic: test.>
+    buffer: 32
+outputs:
+  - id: http-output
+    connection_id: http
+    method: POST
+    topic: http://localhost:8989
+runners:
+  - id: es5
+    type: es5
+    program_path: "./example/program.js"
+lines:
+  - id: nats-to-http
+    input_id: nats-input
+    runner_id: es5
+    output_id: http-output

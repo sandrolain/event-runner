@@ -31,6 +31,8 @@ func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
 		opts = append(opts, nats.UserInfo(cfg.Username, cfg.Password))
 	}
 
+	slog.Info("connecting to NATS server", "url", url)
+
 	// Connect to a server
 	nc, _ := nats.Connect(url, opts...)
 

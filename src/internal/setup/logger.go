@@ -31,8 +31,7 @@ func SetupLogger(cfg config.Logger) (err error) {
 	return
 }
 
-func parseLogLevel(s string) (slog.Level, error) {
-	var level slog.Level
-	var err = level.UnmarshalText([]byte(s))
-	return level, err
+func parseLogLevel(s string) (level slog.Level, err error) {
+	err = level.UnmarshalText([]byte(s))
+	return
 }

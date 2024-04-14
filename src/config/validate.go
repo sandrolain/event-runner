@@ -18,10 +18,35 @@ func Validate(cfg *Config) (err error) {
 		return
 	}
 
+	if len(cfg.Connections) == 0 {
+		err = fmt.Errorf("at least one connection is required")
+		return
+	}
+
+	if len(cfg.Runners) == 0 {
+		err = fmt.Errorf("at least one runner is required")
+		return
+	}
+
+	if len(cfg.Lines) == 0 {
+		err = fmt.Errorf("at least one line is required")
+		return
+	}
+
+	if len(cfg.Inputs) == 0 {
+		err = fmt.Errorf("at least one input is required")
+		return
+	}
+
+	if len(cfg.Outputs) == 0 {
+		err = fmt.Errorf("at least one output is required")
+		return
+	}
+
 	connIds := make(map[string]bool)
 	for _, conn := range cfg.Connections {
 		if connIds[conn.ID] {
-			err = fmt.Errorf("connection \"%s\" already exists", conn.ID)
+			err = fmt.Errorf("duplicate connection \"%s\"", conn.ID)
 			return
 		}
 		connIds[conn.ID] = true
@@ -30,7 +55,7 @@ func Validate(cfg *Config) (err error) {
 	runIds := make(map[string]bool)
 	for _, runner := range cfg.Runners {
 		if runIds[runner.ID] {
-			err = fmt.Errorf("runner \"%s\" already exists", runner.ID)
+			err = fmt.Errorf("duplicate runner \"%s\"", runner.ID)
 			return
 		}
 		runIds[runner.ID] = true
@@ -39,7 +64,7 @@ func Validate(cfg *Config) (err error) {
 	lineIds := make(map[string]bool)
 	for _, line := range cfg.Lines {
 		if lineIds[line.ID] {
-			err = fmt.Errorf("line \"%s\" already exists", line.ID)
+			err = fmt.Errorf("duplicate line \"%s\"", line.ID)
 			return
 		}
 		lineIds[line.ID] = true
@@ -48,7 +73,7 @@ func Validate(cfg *Config) (err error) {
 	inputsIds := make(map[string]bool)
 	for _, input := range cfg.Inputs {
 		if inputsIds[input.ID] {
-			err = fmt.Errorf("input \"%s\" already exists", input.ID)
+			err = fmt.Errorf("duplicate input \"%s\"", input.ID)
 			return
 		}
 		inputsIds[input.ID] = true
@@ -57,27 +82,39 @@ func Validate(cfg *Config) (err error) {
 	outputsIds := make(map[string]bool)
 	for _, output := range cfg.Outputs {
 		if outputsIds[output.ID] {
-			err = fmt.Errorf("output \"%s\" already exists", output.ID)
+			err = fmt.Errorf("duplicate output \"%s\"", output.ID)
 			return
 		}
 		outputsIds[output.ID] = true
 	}
 
+	for _, input := range cfg.Inputs {
+		connId := input.ConnectionID
+		if connIds[connId] != true {
+			err = fmt.Errorf("connection \"%s\" not found for input \"%s\"", connId, input.ID)
+			return
+		}
+	}
+
+	for _, output := range cfg.Outputs {
+		connId := output.ConnectionID
+		if connIds[connId] != true {
+			err = fmt.Errorf("connection \"%s\" not found for output \"%s\"", connId, output.ID)
+			return
+		}
+	}
+
 	for _, line := range cfg.Lines {
-		if connIds[line.Connection] != true {
-			err = fmt.Errorf("connection \"%s\" not found for line \"%s\"", line.Connection, line.ID)
+		if runIds[line.RunnerID] != true {
+			err = fmt.Errorf("runner \"%s\" not found for line \"%s\"", line.RunnerID, line.ID)
 			return
 		}
-		if runIds[line.Runner] != true {
-			err = fmt.Errorf("runner \"%s\" not found for line \"%s\"", line.Runner, line.ID)
+		if inputsIds[line.InputID] != true {
+			err = fmt.Errorf("input \"%s\" not found for line \"%s\"", line.InputID, line.ID)
 			return
 		}
-		if inputsIds[line.Input] != true {
-			err = fmt.Errorf("input \"%s\" not found for line \"%s\"", line.Input, line.ID)
-			return
-		}
-		if outputsIds[line.Output] != true {
-			err = fmt.Errorf("output \"%s\" not found for line \"%s\"", line.Output, line.ID)
+		if outputsIds[line.OutputID] != true {
+			err = fmt.Errorf("output \"%s\" not found for line \"%s\"", line.OutputID, line.ID)
 			return
 		}
 	}
