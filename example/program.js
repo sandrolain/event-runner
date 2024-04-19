@@ -1,7 +1,7 @@
 addMetadata("foo", "bar");
 setMetadata("foo", "bar2");
 addMetadata("foo", "bar3");
-setConfig("topic", `http://localhost:8989/${message.topic()}?foo=bar&foo=baz`);
+setConfig("topic", `http://localhost:8989/${message.topic()}`);
 setConfig("method", "POST");
 
 const foo = cache.get("foo") ?? 0;

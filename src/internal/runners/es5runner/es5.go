@@ -154,7 +154,10 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 		return
 	}
 
-	err = vm.Set("cache", &CacheWrapper{cache: r.cache})
+	err = vm.Set("cache", &CacheWrapper{
+		vm:    vm,
+		cache: r.cache,
+	})
 	if err != nil {
 		return
 	}
