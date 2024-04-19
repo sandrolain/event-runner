@@ -13,15 +13,17 @@ import (
 type Executor struct {
 	connections     map[string]itf.EventConnection
 	runnersManagers map[string]itf.RunnerManager
+	caches          map[string]itf.EventCache
 }
 
 func Exec(cfg config.Config) (err error) {
 	exec := &Executor{
 		connections:     make(map[string]itf.EventConnection),
 		runnersManagers: make(map[string]itf.RunnerManager),
+		caches:          make(map[string]itf.EventCache),
 	}
 
-	getInput := func(id string) (res config.Input, err error) {
+	getInputConfig := func(id string) (res config.Input, err error) {
 		for _, cfg := range cfg.Inputs {
 			if cfg.ID == id {
 				return cfg, nil
@@ -31,13 +33,39 @@ func Exec(cfg config.Config) (err error) {
 		return
 	}
 
-	getOutput := func(id string) (res config.Output, err error) {
+	getOutputConfig := func(id string) (res config.Output, err error) {
 		for _, cfg := range cfg.Outputs {
 			if cfg.ID == id {
 				return cfg, nil
 			}
 		}
 		err = fmt.Errorf("output \"%s\" not found", id)
+		return
+	}
+
+	getCache := func(id string) (res itf.EventCache, err error) {
+		res, ok := exec.caches[id]
+		if ok {
+			return
+		}
+
+		for _, cfg := range cfg.Caches {
+			if cfg.ID == id {
+				cacheConn, ok := exec.connections[cfg.ConnectionID]
+				if !ok {
+					err = fmt.Errorf("connection \"%s\" for cache \"%s\" not found", cfg.ConnectionID, cfg.ID)
+					return
+				}
+				res, err = cacheConn.NewCache(cfg)
+				if err != nil {
+					err = fmt.Errorf("failed to create cache \"%s\": %w", cfg.ID, err)
+					return
+				}
+				exec.caches[cfg.ID] = res
+				return
+			}
+		}
+		err = fmt.Errorf("cache \"%s\" not found", id)
 		return
 	}
 
@@ -66,16 +94,27 @@ func Exec(cfg config.Config) (err error) {
 			return
 		}
 
-		input, e := getInput(cfg.InputID)
+		input, e := getInputConfig(cfg.InputID)
 		if err != nil {
 			err = fmt.Errorf("failed to get input: %w", e)
 			return
 		}
 
-		output, e := getOutput(cfg.OutputID)
+		output, e := getOutputConfig(cfg.OutputID)
 		if err != nil {
 			err = fmt.Errorf("failed to get output: %w", e)
 			return
+		}
+
+		var cache itf.EventCache
+		if cfg.CacheID != "" {
+			cache, e = getCache(cfg.CacheID)
+			if err != nil {
+				err = fmt.Errorf("failed to get cache: %w", e)
+				return
+			}
+		} else {
+			// TODO default in-memory cache
 		}
 
 		inputConn, ok := exec.connections[input.ConnectionID]
@@ -108,7 +147,7 @@ func Exec(cfg config.Config) (err error) {
 			return
 		}
 
-		run, e := runMan.New()
+		run, e := runMan.New(cache)
 		if e != nil {
 			err = fmt.Errorf("failed to create runner: %w", e)
 			return

@@ -9,6 +9,7 @@ import (
 type EventConnection interface {
 	NewInput(config.Input) (EventInput, error)
 	NewOutput(config.Output) (EventOutput, error)
+	NewCache(config.Cache) (EventCache, error)
 	Close() error
 }
 
@@ -47,5 +48,12 @@ type EventMessage interface {
 
 type EventOutput interface {
 	Ingest(chan RunnerResult) error
+	Close() error
+}
+
+type EventCache interface {
+	Get(key string) (any, error)
+	Set(key string, data any) error
+	Del(key string) error
 	Close() error
 }

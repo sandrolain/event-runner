@@ -12,7 +12,7 @@ import (
 type NatsEventInput struct {
 	slog         *slog.Logger
 	config       config.Input
-	connection   *nats.Conn
+	nats         *nats.Conn
 	subscription *nats.Subscription
 	c            chan itf.EventMessage
 }
@@ -21,7 +21,7 @@ func (s *NatsEventInput) Receive() (c chan itf.EventMessage, err error) {
 	c = make(chan itf.EventMessage, s.config.Buffer)
 	s.c = c
 	// TODO NATS stream with consumer group
-	s.subscription, err = s.connection.Subscribe(s.config.Topic, func(m *nats.Msg) {
+	s.subscription, err = s.nats.Subscribe(s.config.Topic, func(m *nats.Msg) {
 		s.slog.Debug("received", "subject", m.Subject, "size", len(m.Data))
 		c <- &NatsEventMessage{
 			time: time.Now(),
@@ -39,6 +39,6 @@ func (s *NatsEventInput) Close() (err error) {
 	if err != nil {
 		s.slog.Error("error unsubscribing", "err", err)
 	}
-	s.connection.Close()
+	s.nats.Close()
 	return
 }

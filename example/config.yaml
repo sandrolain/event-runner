@@ -26,8 +26,14 @@ runners:
   - id: es5
     type: es5
     program_path: "./example/program.js"
+caches:
+  - id: nats-cache
+    connection_id: nats
+    bucket: test
+    ttl: 1m
 lines:
   - id: nats-to-http
     input_id: nats-input
     runner_id: es5
     output_id: http-output
+    cache_id: nats-cache

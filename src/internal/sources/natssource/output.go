@@ -10,10 +10,10 @@ import (
 )
 
 type NatsEventOutput struct {
-	slog       *slog.Logger
-	config     config.Output
-	connection *nats.Conn
-	stopped    bool
+	slog    *slog.Logger
+	config  config.Output
+	nats    *nats.Conn
+	stopped bool
 }
 
 func (s *NatsEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
@@ -50,7 +50,7 @@ func (s *NatsEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
 			}
 			msg.Data = serData
 
-			err = s.connection.PublishMsg(msg)
+			err = s.nats.PublishMsg(msg)
 			if err != nil {
 				res.Nak()
 				s.slog.Error("error publishing", "err", err)

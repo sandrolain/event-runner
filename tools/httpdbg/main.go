@@ -27,6 +27,12 @@ func main() {
 		black("\n----------------------------------------\n")
 		blue("Request:\n")
 		white("  %s %s\n", ctx.Method(), ctx.RequestURI())
+		blue("Query:\n")
+		ctx.QueryArgs().VisitAll(func(key, value []byte) {
+			white("  %s: %s\n", key, value)
+		})
+		blue("Remote address:\n")
+		white("  %s\n", ctx.RemoteAddr().String())
 		blue("Headers:\n")
 		ctx.Request.Header.VisitAll(func(key, value []byte) {
 			white("  %s: %s\n", key, value)

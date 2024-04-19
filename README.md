@@ -35,4 +35,14 @@ Future improvements
   * [ ] Kubernetes resource definition (deployment, service, etc.)
   * [ ] TLS and mTLS
   * [ ] Observability
-  * [ ] Integrated cache options (e.g. NATS, Redis, in-memory)
+  * [ ] Integrated cache options
+    * [ ] in-memory
+    * [x] NATS
+    * [ ] Redis
+
+### Generic plugin system based on gRPC
+
+* Each plugin is implemented as a separate process with its own gRPC server
+* The Event Runner process communicates with each plugin via gRPC commands
+  * Each command has a name (e.g. "ingest", "stop") and payload arguments
+  * The Event Runner process handles starting and stopping of plugin processes

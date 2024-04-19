@@ -1,7 +1,7 @@
 package itf
 
 type RunnerManager interface {
-	New() (Runner, error)
+	New(EventCache) (Runner, error)
 	StopAll() error
 }
 

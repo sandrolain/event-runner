@@ -3,6 +3,7 @@ package httpsource
 import (
 	"fmt"
 	"log/slog"
+	"net"
 	"sync"
 
 	"github.com/sandrolain/event-runner/src/config"
@@ -50,17 +51,17 @@ func (c *HTTPEventConnection) startServer() (err error) {
 	c.started = true
 
 	// TODO: manage TLS?
-	// TODO: refactor using net.Listener
-	e := fasthttp.ListenAndServe(c.address, func(ctx *fasthttp.RequestCtx) {
-		// TODO: permit other methods?
-		if !ctx.IsPut() {
-			ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
-			return
-		}
+	listener, e := net.Listen("tcp", c.address)
+	if e != nil {
+		err = fmt.Errorf("failed to listen: %w", e)
+	}
+
+	e = fasthttp.Serve(listener, func(ctx *fasthttp.RequestCtx) {
+		method := string(ctx.Method())
 		path := string(ctx.Path())
 		found := false
 		for _, input := range c.inputs {
-			if path == input.config.Topic {
+			if method == input.config.Method && path == input.config.Topic {
 				input.ingest(ctx)
 				ctx.SetStatusCode(fasthttp.StatusAccepted)
 				found = true
@@ -70,7 +71,6 @@ func (c *HTTPEventConnection) startServer() (err error) {
 			ctx.SetStatusCode(fasthttp.StatusNotFound)
 		}
 	})
-
 	if e != nil {
 		err = fmt.Errorf("failed to start HTTP server: %w", e)
 	}
@@ -82,6 +82,11 @@ func (c *HTTPEventConnection) startServer() (err error) {
 func (c *HTTPEventConnection) NewInput(cfg config.Input) (res itf.EventInput, err error) {
 	c.inputMx.Lock()
 	defer c.inputMx.Unlock()
+
+	if cfg.Method == "" {
+		cfg.Method = fasthttp.MethodPut
+	}
+
 	in := &HTTPEventInput{
 		connection: c,
 		config:     cfg,
@@ -112,6 +117,11 @@ func (c *HTTPEventConnection) NewOutput(cfg config.Output) (res itf.EventOutput,
 		config: cfg,
 		slog:   c.slog,
 	}
+	return
+}
+
+func (c *HTTPEventConnection) NewCache(cfg config.Cache) (res itf.EventCache, err error) {
+	// TODO
 	return
 }
 

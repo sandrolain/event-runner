@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
 )
@@ -45,27 +46,65 @@ func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
 	return
 }
 
+func (c *NatsEventConnection) getJetStream() (res *jetstream.JetStream, err error) {
+	if c.js != nil {
+		res = c.js
+		return
+	}
+	js, e := jetstream.New(c.connection)
+	if e != nil {
+		err = fmt.Errorf("error initializing jetstream: %w", e)
+		return
+	}
+	c.js = &js
+	res = c.js
+	return
+}
+
 type NatsEventConnection struct {
 	slog       *slog.Logger
 	config     config.Connection
 	connection *nats.Conn
+	js         *jetstream.JetStream
 }
 
 func (c *NatsEventConnection) NewInput(cfg config.Input) (res itf.EventInput, err error) {
 	res = &NatsEventInput{
-		connection: c.connection,
-		config:     cfg,
-		slog:       c.slog.With("subject", cfg.Topic, "stream", cfg.Stream),
+		nats:   c.connection,
+		config: cfg,
+		slog:   c.slog.With("subject", cfg.Topic, "stream", cfg.Stream),
 	}
 	return
 }
 
 func (c *NatsEventConnection) NewOutput(cfg config.Output) (res itf.EventOutput, err error) {
 	res = &NatsEventOutput{
-		connection: c.connection,
-		config:     cfg,
-		slog:       c.slog,
+		nats:   c.connection,
+		config: cfg,
+		slog:   c.slog,
 	}
+	return
+}
+
+func (c *NatsEventConnection) NewCache(cfg config.Cache) (res itf.EventCache, err error) {
+	js, err := c.getJetStream()
+	if err != nil {
+		return
+	}
+
+	cache := &NatsEventCache{
+		nats:   c.connection,
+		js:     js,
+		config: cfg,
+		slog:   c.slog,
+	}
+
+	err = cache.init()
+	if err != nil {
+		return
+	}
+
+	res = cache
 	return
 }
 

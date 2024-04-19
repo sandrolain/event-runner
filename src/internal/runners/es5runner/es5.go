@@ -49,8 +49,9 @@ type ES5RunnerManager struct {
 	config  config.Runner
 }
 
-func (r *ES5RunnerManager) New() (res itf.Runner, err error) {
+func (r *ES5RunnerManager) New(cache itf.EventCache) (res itf.Runner, err error) {
 	res = &ES5Runner{
+		cache:   cache,
 		config:  r.config,
 		slog:    slog.Default().With("context", "ES5"),
 		program: r.program,
@@ -70,6 +71,7 @@ func (r *ES5RunnerManager) StopAll() error {
 }
 
 type ES5Runner struct {
+	cache   itf.EventCache
 	config  config.Runner
 	slog    *slog.Logger
 	program *goja.Program
@@ -105,10 +107,6 @@ func (r *ES5Runner) Stop() error {
 func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
-	err = vm.Set("message", msg)
-	if err != nil {
-		return
-	}
 
 	rpl, err := msg.ReplyTo()
 	if err != nil {
@@ -124,24 +122,47 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 	}
 
 	hasResult := false
-	vm.Set("setData", func(data any) {
+	err = vm.Set("setData", func(data any) {
 		hasResult = true
 		result.data = data
 	})
+	if err != nil {
+		return
+	}
 
-	vm.Set("setMetadata", func(name string, value string) {
+	err = vm.Set("setMetadata", func(name string, value string) {
 		result.metadata[name] = []string{value}
 	})
-	vm.Set("addMetadata", func(name string, value string) {
+	if err != nil {
+		return
+	}
+
+	err = vm.Set("addMetadata", func(name string, value string) {
 		if result.metadata[name] == nil {
 			result.metadata[name] = []string{}
 		}
 		result.metadata[name] = append(result.metadata[name], value)
 	})
+	if err != nil {
+		return
+	}
 
-	vm.Set("setConfig", func(name string, value string) {
+	err = vm.Set("setConfig", func(name string, value string) {
 		result.config[name] = value
 	})
+	if err != nil {
+		return
+	}
+
+	err = vm.Set("cache", &CacheWrapper{cache: r.cache})
+	if err != nil {
+		return
+	}
+
+	err = vm.Set("message", msg)
+	if err != nil {
+		return
+	}
 
 	v, err := vm.RunProgram(r.program)
 	if err != nil {
