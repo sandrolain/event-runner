@@ -10,8 +10,8 @@ import (
 func main() {
 	natsClient, _ := nats.Connect(nats.DefaultURL, nats.Token("nats-secret"))
 	for {
-		time.Sleep(100 * time.Millisecond)
-		natsClient.Publish("test.hello", []byte{1, 2, 3, 4})
+		time.Sleep(500 * time.Microsecond)
+		natsClient.Publish("test.hello", []byte(time.Now().Format(time.RFC3339Nano)))
 		slog.Info("sent")
 	}
 }

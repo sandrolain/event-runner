@@ -26,6 +26,7 @@ runners:
   - id: es5
     type: es5
     program_path: "./example/program.js"
+    concurrency: 8
 caches:
   - id: nats-cache
     connection_id: nats

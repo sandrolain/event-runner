@@ -31,9 +31,10 @@ type Runner struct {
 	Type        string `yaml:"type" json:"type" validate:"required,oneof=es5 wasm"`
 	ProgramPath string `yaml:"program_path" json:"program_path" validate:"omitempty,required_without=ProgramB64,excluded_with=ProgramB64"`
 	ProgramB64  string `yaml:"program_b64" json:"program_b64" validate:"omitempty,required_without=ProgramPath,excluded_with=ProgramPath,base64"`
-	Buffer      int    `yaml:"buffer" json:"buffer"`
+	Buffer      int    `yaml:"buffer" json:"buffer" default:"128" validate:"required"`
 	Timeout     string `yaml:"timeout" json:"timeout" default:"5s" validate:"required"`
 	MaxStack    int    `yaml:"max_stack" json:"max_stack" default:"1024" validate:"required"`
+	Concurrency int    `yaml:"concurrency" json:"concurrency" default:"1" validate:"required,gt=0"`
 }
 
 type Line struct {
@@ -47,7 +48,7 @@ type Line struct {
 type Input struct {
 	ID           string `yaml:"id" json:"id" validate:"required"`
 	ConnectionID string `yaml:"connection_id" json:"connection_id" validate:"required"`
-	Buffer       int    `yaml:"buffer" json:"buffer"`
+	Buffer       int    `yaml:"buffer" json:"buffer" default:"128" validate:"required"`
 	Topic        string `yaml:"topic" json:"topic" validate:"required"`
 	Method       string `yaml:"method" json:"method" validate:"omitempty,oneof=POST PUT PATCH"` // HTTP
 	Stream       string `yaml:"stream" json:"stream"`                                           // NATS

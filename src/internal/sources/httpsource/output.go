@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
@@ -15,6 +16,25 @@ type HTTPEventOutput struct {
 	slog    *slog.Logger
 	config  config.Output
 	stopped bool
+	client  *fasthttp.Client
+}
+
+func (s *HTTPEventOutput) init() {
+	// TODO: from configuration
+	readTimeout, _ := time.ParseDuration("500ms")
+	writeTimeout, _ := time.ParseDuration("500ms")
+	s.client = &fasthttp.Client{
+		ReadTimeout:                   readTimeout,
+		WriteTimeout:                  writeTimeout,
+		NoDefaultUserAgentHeader:      true,
+		DisableHeaderNamesNormalizing: true,
+		DisablePathNormalizing:        true,
+		// increase DNS cache time to an hour instead of default minute
+		Dial: (&fasthttp.TCPDialer{
+			Concurrency:      4096,
+			DNSCacheDuration: time.Hour,
+		}).Dial,
+	}
 }
 
 func (s *HTTPEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
@@ -69,7 +89,6 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 
 	s.slog.Debug("publishing", "method", method, "url", url, "size", len(serData))
 
-	client := &fasthttp.Client{}
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
@@ -93,7 +112,7 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.Do(req, res)
+	err = s.client.Do(req, res)
 	if err != nil {
 		err = fmt.Errorf("error sending request: %w", err)
 		return

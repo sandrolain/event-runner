@@ -17,6 +17,7 @@ result.setData({
   data: message.topic(),
   foo,
   bar,
+  orig: message.dataString(),
 });
 
 cache.set("foo", foo + 1);

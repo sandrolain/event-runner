@@ -28,6 +28,10 @@ func (m NatsEventMessage) Data() ([]byte, error) {
 	return m.msg.Data, nil
 }
 
+func (m NatsEventMessage) DataString() (string, error) {
+	return string(m.msg.Data), nil
+}
+
 func (m NatsEventMessage) Time() (time.Time, error) {
 	return m.time, nil
 }

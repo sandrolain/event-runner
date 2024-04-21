@@ -42,6 +42,7 @@ type EventMessage interface {
 	ReplyTo() (string, error)
 	Metadata(string) ([]string, error)
 	Data() ([]byte, error)
+	DataString() (string, error)
 	Ack() error
 	Nak() error
 }

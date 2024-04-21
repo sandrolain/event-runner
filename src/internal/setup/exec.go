@@ -2,6 +2,7 @@ package setup
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
@@ -56,6 +57,7 @@ func Exec(cfg config.Config) (err error) {
 					err = fmt.Errorf("connection \"%s\" for cache \"%s\" not found", cfg.ConnectionID, cfg.ID)
 					return
 				}
+				slog.Info("init cache", "id", cfg.ID)
 				res, err = cacheConn.NewCache(cfg)
 				if err != nil {
 					err = fmt.Errorf("failed to create cache \"%s\": %w", cfg.ID, err)
@@ -70,6 +72,7 @@ func Exec(cfg config.Config) (err error) {
 	}
 
 	for _, cfg := range cfg.Connections {
+		slog.Info("init connection", "id", cfg.ID)
 		c, e := NewConnection(cfg)
 		if e != nil {
 			err = fmt.Errorf("failed to create connection \"%s\": %w", cfg.ID, e)
@@ -79,6 +82,7 @@ func Exec(cfg config.Config) (err error) {
 	}
 
 	for _, cfg := range cfg.Runners {
+		slog.Info("init runner", "id", cfg.ID, "concurrncy", cfg.Concurrency)
 		r, e := NewRunnerManager(cfg)
 		if e != nil {
 			err = fmt.Errorf("failed to create runner \"%s\": %w", cfg.ID, e)
@@ -88,6 +92,8 @@ func Exec(cfg config.Config) (err error) {
 	}
 
 	for _, cfg := range cfg.Lines {
+		slog.Info("init line", "runner", cfg.RunnerID, "input", cfg.InputID, "output", cfg.OutputID, "cache", cfg.CacheID)
+
 		runMan, ok := exec.runnersManagers[cfg.RunnerID]
 		if !ok {
 			err = fmt.Errorf("runner \"%s\" not found", cfg.RunnerID)
@@ -129,36 +135,42 @@ func Exec(cfg config.Config) (err error) {
 			return
 		}
 
+		slog.Info("create input", "id", input.ID)
 		in, e := inputConn.NewInput(input)
 		if err != nil {
 			err = fmt.Errorf("failed to create input: %w", e)
 			return
 		}
 
+		slog.Info("create output", "id", output.ID)
 		out, e := outputConn.NewOutput(output)
 		if err != nil {
 			err = fmt.Errorf("failed to create output: %w", e)
 			return
 		}
 
+		slog.Info("receive input", "id", input.ID)
 		inC, e := in.Receive()
 		if err != nil {
 			err = fmt.Errorf("failed to receive input: %w", e)
 			return
 		}
 
+		slog.Info("create runner instance", "id", cfg.RunnerID)
 		run, e := runMan.New(cache)
 		if e != nil {
 			err = fmt.Errorf("failed to create runner: %w", e)
 			return
 		}
 
+		slog.Info("ingest input", "id", input.ID, "runner", cfg.RunnerID)
 		ouC, e := run.Ingest(inC)
 		if e != nil {
 			err = fmt.Errorf("failed to ingest input: %w", e)
 			return
 		}
 
+		slog.Info("ingest output", "id", output.ID, "runner", cfg.RunnerID)
 		e = out.Ingest(ouC)
 		if e != nil {
 			err = fmt.Errorf("failed to ingest output: %w", e)

@@ -113,10 +113,12 @@ func (c *HTTPEventConnection) removeInput(in *HTTPEventInput) (err error) {
 }
 
 func (c *HTTPEventConnection) NewOutput(cfg config.Output) (res itf.EventOutput, err error) {
-	res = &HTTPEventOutput{
+	output := &HTTPEventOutput{
 		config: cfg,
 		slog:   c.slog,
 	}
+	output.init()
+	res = output
 	return
 }
 

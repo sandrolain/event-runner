@@ -80,6 +80,26 @@ type ES5Runner struct {
 
 func (r *ES5Runner) Ingest(c chan itf.EventMessage) (o chan itf.RunnerResult, err error) {
 	o = make(chan itf.RunnerResult, r.config.Buffer)
+
+	for i := 0; i < r.config.Concurrency; i++ {
+		go func() {
+			for !r.stopped {
+				msg := <-c
+				res, err := r.run(msg)
+				if err != nil {
+					msg.Nak()
+					r.slog.Error("error running", "err", err)
+					continue
+				}
+				if res != nil {
+					r.slog.Debug("got result", "res", res)
+					o <- res
+				}
+				msg.Ack()
+			}
+		}()
+	}
+
 	go func() {
 		for !r.stopped {
 			msg := <-c
