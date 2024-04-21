@@ -18,7 +18,7 @@ type Logger struct {
 
 type Connection struct {
 	ID       string `yaml:"id" json:"id" validate:"required"`
-	Type     string `yaml:"type" json:"type" validate:"required,oneof=nats redis http"`
+	Type     string `yaml:"type" json:"type" validate:"required,oneof=nats redis http grpc"`
 	Hostname string `yaml:"hostname" json:"hostname" validate:"required"`
 	Port     int    `yaml:"port" json:"port" validate:"required"`
 	Token    string `yaml:"token" json:"token"`
@@ -28,10 +28,11 @@ type Connection struct {
 
 type Runner struct {
 	ID          string `yaml:"id" json:"id" validate:"required"`
-	Type        string `yaml:"type" json:"type" validate:"required,oneof=es5 risor"`
+	Type        string `yaml:"type" json:"type" validate:"required,oneof=es5 wasm"`
 	ProgramPath string `yaml:"program_path" json:"program_path" validate:"omitempty,required_without=ProgramB64,excluded_with=ProgramB64"`
 	ProgramB64  string `yaml:"program_b64" json:"program_b64" validate:"omitempty,required_without=ProgramPath,excluded_with=ProgramPath,base64"`
 	Buffer      int    `yaml:"buffer" json:"buffer"`
+	Timeout     string `yaml:"timeout" json:"timeout" default:"5s" validate:"required"`
 }
 
 type Line struct {
@@ -45,20 +46,22 @@ type Line struct {
 type Input struct {
 	ID           string `yaml:"id" json:"id" validate:"required"`
 	ConnectionID string `yaml:"connection_id" json:"connection_id" validate:"required"`
-	Topic        string `yaml:"topic" json:"topic" validate:"required"`
-	Method       string `yaml:"method" json:"method" validate:"omitempty,oneof=POST PUT PATCH"`
-	Stream       string `yaml:"stream" json:"stream"`
-	Client       string `yaml:"client" json:"client"`
 	Buffer       int    `yaml:"buffer" json:"buffer"`
+	Topic        string `yaml:"topic" json:"topic" validate:"required"`
+	Method       string `yaml:"method" json:"method" validate:"omitempty,oneof=POST PUT PATCH"` // HTTP
+	Stream       string `yaml:"stream" json:"stream"`                                           // NATS
+	Client       string `yaml:"client" json:"client"`                                           // NATS
 }
 
 type Output struct {
 	ID           string `yaml:"id" json:"id" validate:"required"`
 	ConnectionID string `yaml:"connection_id" json:"connection_id" validate:"required"`
 	Topic        string `yaml:"topic" json:"topic" validate:"required"`
-	Method       string `yaml:"method" json:"method" validate:"omitempty,oneof=POST PUT PATCH"`
-	Stream       string `yaml:"stream" json:"stream"`
-	Client       string `yaml:"client" json:"client"`
+	Method       string `yaml:"method" json:"method" validate:"omitempty,oneof=POST PUT PATCH"` // HTTP
+	Hostname     string `yaml:"hostname" json:"hostname" validate:"omitempty"`                  // gRPC
+	Port         int    `yaml:"port" json:"port" validate:"omitempty,gte=0,lte=65535"`          // gRPC
+	Stream       string `yaml:"stream" json:"stream" validate:"omitempty"`                      // NATS
+	Client       string `yaml:"client" json:"client" validate:"omitempty"`                      // NATS
 }
 
 type Cache struct {

@@ -32,7 +32,7 @@ caches:
     bucket: test
     ttl: 1m
 lines:
-  - id: nats-to-http
+  - id: nats-es5-http
     input_id: nats-input
     runner_id: es5
     output_id: http-output

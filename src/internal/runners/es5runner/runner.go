@@ -1,14 +1,13 @@
 package es5runner
 
 import (
-	"encoding/base64"
-	"fmt"
 	"log/slog"
-	"os"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
+	"github.com/sandrolain/event-runner/src/internal/runners"
 )
 
 type Config struct {
@@ -18,24 +17,16 @@ type Config struct {
 }
 
 func NewRunner(c config.Runner) (res itf.RunnerManager, err error) {
-	var program []byte
-	if c.ProgramPath != "" {
-		program, err = os.ReadFile(c.ProgramPath)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read program file %s: %w", c.ProgramPath, err)
-		}
-	} else {
-		program, err = base64.StdEncoding.DecodeString(c.ProgramB64)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode program: %w", err)
-		}
-	}
-	programContent := string(program)
-
-	prog, err := goja.Compile(c.ID, programContent, true)
+	program, err := runners.GetProgramContent(c)
 	if err != nil {
 		return
 	}
+
+	prog, err := goja.Compile(c.ID, string(program), true)
+	if err != nil {
+		return
+	}
+
 	res = &ES5RunnerManager{
 		config:  c,
 		program: prog,
@@ -47,6 +38,7 @@ type ES5RunnerManager struct {
 	program *goja.Program
 	runners []itf.Runner
 	config  config.Runner
+	timeout time.Duration
 }
 
 func (r *ES5RunnerManager) New(cache itf.EventCache) (res itf.Runner, err error) {
@@ -55,6 +47,7 @@ func (r *ES5RunnerManager) New(cache itf.EventCache) (res itf.Runner, err error)
 		config:  r.config,
 		slog:    slog.Default().With("context", "ES5"),
 		program: r.program,
+		timeout: r.timeout,
 	}
 	r.runners = append(r.runners, res)
 	return
@@ -73,6 +66,7 @@ func (r *ES5RunnerManager) StopAll() error {
 type ES5Runner struct {
 	cache   itf.EventCache
 	config  config.Runner
+	timeout time.Duration
 	slog    *slog.Logger
 	program *goja.Program
 	stopped bool
@@ -107,49 +101,24 @@ func (r *ES5Runner) Stop() error {
 func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
+	// TODO: from configuration
+	vm.SetMaxCallStackSize(1000)
 
 	rpl, err := msg.ReplyTo()
 	if err != nil {
 		return
 	}
 
-	result := ES5RunnerResult{
+	result := &ES5RunnerResult{
 		message:     msg,
 		destination: rpl,
 		metadata:    map[string][]string{},
 		data:        nil,
 		config:      map[string]string{},
+		hasResult:   false,
 	}
 
-	hasResult := false
-	err = vm.Set("setData", func(data any) {
-		hasResult = true
-		result.data = data
-	})
-	if err != nil {
-		return
-	}
-
-	err = vm.Set("setMetadata", func(name string, value string) {
-		result.metadata[name] = []string{value}
-	})
-	if err != nil {
-		return
-	}
-
-	err = vm.Set("addMetadata", func(name string, value string) {
-		if result.metadata[name] == nil {
-			result.metadata[name] = []string{}
-		}
-		result.metadata[name] = append(result.metadata[name], value)
-	})
-	if err != nil {
-		return
-	}
-
-	err = vm.Set("setConfig", func(name string, value string) {
-		result.config[name] = value
-	})
+	err = vm.Set("result", result)
 	if err != nil {
 		return
 	}
@@ -167,19 +136,28 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 		return
 	}
 
+	// Script timeout
+	timer := time.AfterFunc(r.timeout, func() {
+		vm.Interrupt("Timeout")
+	})
+	defer timer.Stop()
+
 	v, err := vm.RunProgram(r.program)
 	if err != nil {
 		return
 	}
 
-	if !hasResult && v != nil {
+	hasResult := result.HasResult()
+
+	if !result.HasResult() && v != nil {
 		hasResult = true
 		result.data = v
 	}
 
 	if hasResult {
-		res = &result
+		res = result
 	}
+
 	return
 }
 
@@ -189,34 +167,59 @@ type ES5RunnerResult struct {
 	metadata    map[string][]string
 	data        any
 	config      map[string]string
+	hasResult   bool
 }
 
-func (r ES5RunnerResult) Destination() (string, error) {
+func (r *ES5RunnerResult) HasResult() bool {
+	return r.hasResult
+}
+
+func (r *ES5RunnerResult) SetData(data any) {
+	r.data = data
+	r.hasResult = true
+}
+
+func (r *ES5RunnerResult) AddMetadata(name string, value string) {
+	if r.metadata[name] == nil {
+		r.metadata[name] = []string{}
+	}
+	r.metadata[name] = append(r.metadata[name], value)
+}
+
+func (r *ES5RunnerResult) SetMetadata(name string, value string) {
+	r.metadata[name] = []string{value}
+}
+
+func (r *ES5RunnerResult) SetConfig(name string, value string) {
+	r.config[name] = value
+}
+
+func (r *ES5RunnerResult) Destination() (string, error) {
 	return r.destination, nil
 }
 
-func (r ES5RunnerResult) Metadata() (res map[string][]string, err error) {
+func (r *ES5RunnerResult) Metadata() (res map[string][]string, err error) {
 	res = r.metadata
 	return
 }
 
-func (r ES5RunnerResult) Config() (res map[string]string, err error) {
+func (r *ES5RunnerResult) Config() (res map[string]string, err error) {
 	res = r.config
 	return
 }
 
-func (r ES5RunnerResult) Data() (any, error) {
+func (r *ES5RunnerResult) Data() (any, error) {
 	return r.data, nil
 }
 
-func (r ES5RunnerResult) Ack() error {
+func (r *ES5RunnerResult) Ack() error {
 	return r.message.Ack()
 }
 
-func (r ES5RunnerResult) Nak() error {
+func (r *ES5RunnerResult) Nak() error {
 	return r.message.Nak()
 }
 
-func (r ES5RunnerResult) Message() itf.EventMessage {
+func (r *ES5RunnerResult) Message() itf.EventMessage {
 	return r.message
 }

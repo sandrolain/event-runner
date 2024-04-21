@@ -26,7 +26,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	setup.Exec(cfg)
+	err = setup.Exec(cfg)
+	if err != nil {
+		slog.Error("error executing setup", "err", err)
+		os.Exit(1)
+	}
 
 	setup.HoldExit()
 }

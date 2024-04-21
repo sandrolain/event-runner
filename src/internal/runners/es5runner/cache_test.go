@@ -41,7 +41,7 @@ func NewCacheWrapper() (res CacheWrapper, vm *goja.Runtime) {
 	return
 }
 
-func TestCacheWrapper_SetGet(t *testing.T) {
+func TestCacheWrapperSetGet(t *testing.T) {
 	c, _ := NewCacheWrapper()
 	key := "foo"
 	value := "bar"
@@ -54,7 +54,7 @@ func TestCacheWrapper_SetGet(t *testing.T) {
 	assert.Equal(t, value, c.Get(key))
 }
 
-func TestCacheWrapper_Del(t *testing.T) {
+func TestCacheWrapperDel(t *testing.T) {
 	c, _ := NewCacheWrapper()
 	key := "foo"
 	value := "bar"
