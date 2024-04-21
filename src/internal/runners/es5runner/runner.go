@@ -22,6 +22,11 @@ func NewRunner(c config.Runner) (res itf.RunnerManager, err error) {
 		return
 	}
 
+	timeout, err := time.ParseDuration(c.Timeout)
+	if err != nil {
+		return
+	}
+
 	prog, err := goja.Compile(c.ID, string(program), true)
 	if err != nil {
 		return
@@ -30,6 +35,7 @@ func NewRunner(c config.Runner) (res itf.RunnerManager, err error) {
 	res = &ES5RunnerManager{
 		config:  c,
 		program: prog,
+		timeout: timeout,
 	}
 	return
 }
@@ -101,8 +107,7 @@ func (r *ES5Runner) Stop() error {
 func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) {
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
-	// TODO: from configuration
-	vm.SetMaxCallStackSize(1000)
+	vm.SetMaxCallStackSize(r.config.MaxStack)
 
 	rpl, err := msg.ReplyTo()
 	if err != nil {

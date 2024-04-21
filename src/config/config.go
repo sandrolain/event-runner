@@ -33,6 +33,7 @@ type Runner struct {
 	ProgramB64  string `yaml:"program_b64" json:"program_b64" validate:"omitempty,required_without=ProgramPath,excluded_with=ProgramPath,base64"`
 	Buffer      int    `yaml:"buffer" json:"buffer"`
 	Timeout     string `yaml:"timeout" json:"timeout" default:"5s" validate:"required"`
+	MaxStack    int    `yaml:"max_stack" json:"max_stack" default:"1024" validate:"required"`
 }
 
 type Line struct {
