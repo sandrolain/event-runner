@@ -32,9 +32,14 @@ caches:
     connection_id: nats
     bucket: test
     ttl: 1m
+plugins:
+  - id: pizzas
+    exec: "./example/plugins/pizzas/pizzas"
 lines:
   - id: nats-es5-http
     input_id: nats-input
     runner_id: es5
     output_id: http-output
     cache_id: nats-cache
+    plugin_ids:
+      - pizzas

@@ -35,12 +35,13 @@ func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
 }
 
 type HTTPEventConnection struct {
-	inputs  []*HTTPEventInput
-	slog    *slog.Logger
-	config  config.Connection
-	inputMx sync.RWMutex
-	address string
-	started bool
+	listener net.Listener
+	inputs   []*HTTPEventInput
+	slog     *slog.Logger
+	config   config.Connection
+	inputMx  sync.RWMutex
+	address  string
+	started  bool
 }
 
 func (c *HTTPEventConnection) startServer() (err error) {
@@ -55,6 +56,7 @@ func (c *HTTPEventConnection) startServer() (err error) {
 	if e != nil {
 		err = fmt.Errorf("failed to listen: %w", e)
 	}
+	c.listener = listener
 
 	e = fasthttp.Serve(listener, func(ctx *fasthttp.RequestCtx) {
 		method := string(ctx.Method())
@@ -124,10 +126,11 @@ func (c *HTTPEventConnection) NewOutput(cfg config.Output) (res itf.EventOutput,
 
 func (c *HTTPEventConnection) NewCache(cfg config.Cache) (res itf.EventCache, err error) {
 	// TODO
+	err = fmt.Errorf("not implemented")
 	return
 }
 
 func (c *HTTPEventConnection) Close() (err error) {
-	//TODO: is possible to end the server?
+	c.listener.Close()
 	return
 }

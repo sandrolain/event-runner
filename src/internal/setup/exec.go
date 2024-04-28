@@ -6,6 +6,7 @@ import (
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
+	manager "github.com/sandrolain/event-runner/src/internal/plugins"
 	"github.com/sandrolain/event-runner/src/internal/runners/es5runner"
 	"github.com/sandrolain/event-runner/src/internal/sources/httpsource"
 	"github.com/sandrolain/event-runner/src/internal/sources/natssource"
@@ -91,6 +92,38 @@ func Exec(cfg config.Config) (err error) {
 		exec.runnersManagers[cfg.ID] = r
 	}
 
+	var pluginManager *manager.PluginManager
+
+	if len(cfg.Plugins) > 0 {
+		slog.Info("init plugins", "count", len(cfg.Plugins))
+
+		pluginManager, err = manager.NewPluginManager()
+		if err != nil {
+			err = fmt.Errorf("failed to create plugin manager: %w", err)
+			return
+		}
+
+		err = pluginManager.Start()
+		if err != nil {
+			err = fmt.Errorf("failed to start plugin manager: %w", err)
+			return
+		}
+
+		for _, cfg := range cfg.Plugins {
+			p, e := pluginManager.CreatePlugin(cfg)
+			if e != nil {
+				err = fmt.Errorf("failed to create plugin: %w", e)
+				return
+			}
+
+			e = p.Start()
+			if e != nil {
+				err = fmt.Errorf("failed to start plugin: %w", e)
+				return
+			}
+		}
+	}
+
 	for _, cfg := range cfg.Lines {
 		slog.Info("init line", "runner", cfg.RunnerID, "input", cfg.InputID, "output", cfg.OutputID, "cache", cfg.CacheID)
 
@@ -156,8 +189,23 @@ func Exec(cfg config.Config) (err error) {
 			return
 		}
 
+		plList := make([]*manager.Plugin, 0)
+
+		if pluginManager != nil {
+			for _, pId := range cfg.PluginIDs {
+				p, e := pluginManager.GetPlugin(pId)
+				if e != nil {
+					err = fmt.Errorf("failed to get plugin: %w", e)
+					return
+				}
+				plList = append(plList, p)
+			}
+		}
+
+		plugins := manager.NewEventPlugins(plList)
+
 		slog.Info("create runner instance", "id", cfg.RunnerID)
-		run, e := runMan.New(cache)
+		run, e := runMan.New(cache, plugins)
 		if e != nil {
 			err = fmt.Errorf("failed to create runner: %w", e)
 			return

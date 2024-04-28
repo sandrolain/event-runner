@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
@@ -13,7 +14,10 @@ func ApplyDefaults(cfg *Config) (err error) {
 }
 
 func Validate(cfg *Config) (err error) {
-	err = validator.New(validator.WithRequiredStructEnabled()).Struct(cfg)
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	validate.RegisterValidation("duration", validateDuration)
+
+	err = validate.Struct(cfg)
 	if err != nil {
 		return
 	}
@@ -88,6 +92,15 @@ func Validate(cfg *Config) (err error) {
 		outputsIds[output.ID] = true
 	}
 
+	pluginIds := make(map[string]bool)
+	for _, p := range cfg.Plugins {
+		if pluginIds[p.ID] {
+			err = fmt.Errorf("duplicate plugin \"%s\"", p.ID)
+			return
+		}
+		pluginIds[p.ID] = true
+	}
+
 	for _, input := range cfg.Inputs {
 		connId := input.ConnectionID
 		if connIds[connId] != true {
@@ -117,7 +130,19 @@ func Validate(cfg *Config) (err error) {
 			err = fmt.Errorf("output \"%s\" not found for line \"%s\"", line.OutputID, line.ID)
 			return
 		}
+
+		for _, pluginID := range line.PluginIDs {
+			if pluginIds[pluginID] != true {
+				err = fmt.Errorf("plugin \"%s\" not found for line \"%s\"", pluginID, line.ID)
+				return
+			}
+		}
 	}
 
 	return
+}
+
+func validateDuration(fl validator.FieldLevel) bool {
+	_, err := time.ParseDuration(fl.Field().String())
+	return err == nil
 }

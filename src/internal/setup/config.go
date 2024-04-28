@@ -43,7 +43,5 @@ func LoadConfig(filePath string) (cfg config.Config, err error) {
 	if err != nil {
 		return
 	}
-
-	// TODO: add config validation ID bindings
 	return
 }

@@ -12,12 +12,15 @@ const bar = cache.get("bar") ?? "";
 
 const time = new Date().toISOString();
 
+const pizza = plugin.get("pizzas").command("pizza");
+
 result.setData({
   time,
   data: message.topic(),
   foo,
   bar,
   orig: message.dataString(),
+  pizza,
 });
 
 cache.set("foo", foo + 1);

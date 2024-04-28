@@ -47,10 +47,11 @@ type ES5RunnerManager struct {
 	timeout time.Duration
 }
 
-func (r *ES5RunnerManager) New(cache itf.EventCache) (res itf.Runner, err error) {
+func (r *ES5RunnerManager) New(cache itf.EventCache, plugins itf.EventPlugins) (res itf.Runner, err error) {
 	res = &ES5Runner{
 		cache:   cache,
 		config:  r.config,
+		plugins: plugins,
 		slog:    slog.Default().With("context", "ES5"),
 		program: r.program,
 		timeout: r.timeout,
@@ -71,6 +72,7 @@ func (r *ES5RunnerManager) StopAll() error {
 
 type ES5Runner struct {
 	cache   itf.EventCache
+	plugins itf.EventPlugins
 	config  config.Runner
 	timeout time.Duration
 	slog    *slog.Logger
@@ -151,6 +153,14 @@ func (r *ES5Runner) run(msg itf.EventMessage) (res itf.RunnerResult, err error) 
 	err = vm.Set("cache", &CacheWrapper{
 		vm:    vm,
 		cache: r.cache,
+	})
+	if err != nil {
+		return
+	}
+
+	err = vm.Set("plugin", &PluginsWrapper{
+		vm:      vm,
+		plugins: r.plugins,
 	})
 	if err != nil {
 		return
