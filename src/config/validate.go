@@ -8,12 +8,12 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func ApplyDefaults(cfg *Config) (err error) {
-	err = defaults.Set(cfg)
-	return
-}
-
 func Validate(cfg *Config) (err error) {
+	err = defaults.Set(cfg)
+	if err != nil {
+		return
+	}
+
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	validate.RegisterValidation("duration", validateDuration)
 

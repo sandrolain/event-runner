@@ -34,11 +34,6 @@ func LoadConfig(filePath string) (cfg config.Config, err error) {
 	}
 	yaml.Unmarshal(yamlFile, &cfg)
 
-	err = config.ApplyDefaults(&cfg)
-	if err != nil {
-		return
-	}
-
 	err = config.Validate(&cfg)
 	if err != nil {
 		return
