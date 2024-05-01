@@ -26,7 +26,7 @@ func (s *HTTPEventInput) Receive() (c chan itf.EventMessage, err error) {
 	s.c = c
 	go func() {
 		for r := range s.requests {
-			c <- &NatsEventMessage{
+			c <- &HttpEventMessage{
 				time:    time.Now(),
 				httpCtx: r,
 			}

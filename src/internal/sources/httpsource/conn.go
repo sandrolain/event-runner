@@ -48,8 +48,8 @@ func (c *HTTPEventConnection) startServer() (err error) {
 	if c.started {
 		return
 	}
+
 	slog.Info("starting HTTP server", "addr", c.address)
-	c.started = true
 
 	// TODO: manage TLS?
 	listener, e := net.Listen("tcp", c.address)

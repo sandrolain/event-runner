@@ -6,40 +6,40 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-type NatsEventMessage struct {
+type HttpEventMessage struct {
 	time    time.Time
 	httpCtx *fasthttp.RequestCtx
 }
 
-func (m NatsEventMessage) Topic() (string, error) {
+func (m HttpEventMessage) Topic() (string, error) {
 	return string(m.httpCtx.Path()), nil
 }
 
-func (m NatsEventMessage) ReplyTo() (string, error) {
+func (m HttpEventMessage) ReplyTo() (string, error) {
 	return string(m.httpCtx.Request.Header.Referer()), nil
 }
 
-func (m NatsEventMessage) Metadata(key string) (res []string, err error) {
+func (m HttpEventMessage) Metadata(key string) (res []string, err error) {
 	value := string(m.httpCtx.Request.Header.Peek(key))
 	return []string{value}, nil
 }
 
-func (m NatsEventMessage) Data() ([]byte, error) {
+func (m HttpEventMessage) Data() ([]byte, error) {
 	return m.httpCtx.Request.Body(), nil
 }
 
-func (m NatsEventMessage) DataString() (string, error) {
+func (m HttpEventMessage) DataString() (string, error) {
 	return string(m.httpCtx.Request.Body()), nil
 }
 
-func (m NatsEventMessage) Time() (time.Time, error) {
+func (m HttpEventMessage) Time() (time.Time, error) {
 	return m.time, nil
 }
 
-func (m NatsEventMessage) Ack() error {
+func (m HttpEventMessage) Ack() error {
 	return nil
 }
 
-func (m NatsEventMessage) Nak() error {
+func (m HttpEventMessage) Nak() error {
 	return nil
 }
