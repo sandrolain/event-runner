@@ -16,7 +16,7 @@ type NatsEventOutput struct {
 	stopped bool
 }
 
-func (s *NatsEventOutput) Ingest(c chan itf.RunnerResult) (err error) {
+func (s *NatsEventOutput) Ingest(c <-chan itf.RunnerResult) (err error) {
 	go func() {
 		for !s.stopped {
 			res := <-c

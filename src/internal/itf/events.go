@@ -26,7 +26,7 @@ type EventConnection interface {
 // event. When an error occurs the implementation should return the
 // error.
 type EventInput interface {
-	Receive() (chan EventMessage, error)
+	Receive() (<-chan EventMessage, error)
 	Close() error
 }
 
@@ -48,7 +48,7 @@ type EventMessage interface {
 }
 
 type EventOutput interface {
-	Ingest(chan RunnerResult) error
+	Ingest(<-chan RunnerResult) error
 	Close() error
 }
 

@@ -93,7 +93,7 @@ func (c *HTTPEventConnection) NewInput(cfg config.Input) (res itf.EventInput, er
 		connection: c,
 		config:     cfg,
 		slog:       c.slog.With("topic", cfg.Topic),
-		requests:   make(chan *fasthttp.RequestCtx, 10),
+		requests:   make(chan *fasthttp.RequestCtx, cfg.Buffer),
 	}
 	c.startServer()
 	c.inputs = append(c.inputs, in)

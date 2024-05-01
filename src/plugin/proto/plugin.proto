@@ -39,7 +39,7 @@ service PluginService {
   rpc Command(CommandReq) returns (CommandRes);
   rpc Shutdown(ShutdownReq) returns (ShutdownRes);
   rpc Output(OutputReq) returns (OutputRes);
-  rpc StartInput(StartInputReq) returns (StartInputRes);
+  rpc Input(InputReq) returns (stream InputRes);
 }
 
 message StatusReq {
@@ -76,10 +76,14 @@ message OutputReq {
 message OutputRes {
 } 
 
-message StartInputReq {
-  repeated Config config = 1;
+message InputReq {
+  repeated Config configs = 1;
 }
-message StartInputRes {
+message InputRes {
+  string uuid = 1;
+  string topic = 2;
+  repeated Metadata metadata = 3;
+  optional bytes data = 4;
 }
 
 
@@ -87,7 +91,6 @@ message StartInputRes {
 
 service AppService {
   rpc Result(ResultReq) returns (ResultRes);
-  rpc Input(InputReq) returns (InputRes);
 }
 
 message ResultReq {
@@ -98,14 +101,4 @@ message ResultReq {
   Result result = 5;
 }
 message ResultRes {
-}
-
-message InputReq {
-  string plugin_uuid = 1;
-  string uuid = 2;
-  string topic = 3;
-  repeated Metadata metadata = 4;
-  optional bytes data = 5;
-}
-message InputRes {
 }

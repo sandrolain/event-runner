@@ -2,7 +2,6 @@ package httpsource
 
 import (
 	"log/slog"
-	"time"
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
@@ -21,17 +20,17 @@ func (s *HTTPEventInput) ingest(ctx *fasthttp.RequestCtx) {
 	s.requests <- ctx
 }
 
-func (s *HTTPEventInput) Receive() (c chan itf.EventMessage, err error) {
-	c = make(chan itf.EventMessage, s.config.Buffer)
+func (s *HTTPEventInput) Receive() (res <-chan itf.EventMessage, err error) {
+	c := make(chan itf.EventMessage, s.config.Buffer)
 	s.c = c
 	go func() {
 		for r := range s.requests {
 			c <- &HttpEventMessage{
-				time:    time.Now(),
 				httpCtx: r,
 			}
 		}
 	}()
+	res = c
 	return
 }
 

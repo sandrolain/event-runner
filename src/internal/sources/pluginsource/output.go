@@ -1,43 +1,24 @@
-package httpsource
+package pluginsource
 
 import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
 	"github.com/valyala/fasthttp"
 )
 
-type HTTPEventOutput struct {
+type PluginEventOutput struct {
 	slog    *slog.Logger
 	config  config.Output
 	stopped bool
 	client  *fasthttp.Client
 }
 
-func (s *HTTPEventOutput) init() {
-	// TODO: from configuration
-	readTimeout, _ := time.ParseDuration("500ms")
-	writeTimeout, _ := time.ParseDuration("500ms")
-	s.client = &fasthttp.Client{
-		ReadTimeout:                   readTimeout,
-		WriteTimeout:                  writeTimeout,
-		NoDefaultUserAgentHeader:      true,
-		DisableHeaderNamesNormalizing: true,
-		DisablePathNormalizing:        true,
-		// increase DNS cache time to an hour instead of default minute
-		Dial: (&fasthttp.TCPDialer{
-			Concurrency:      4096,
-			DNSCacheDuration: time.Hour,
-		}).Dial,
-	}
-}
-
-func (s *HTTPEventOutput) Ingest(c <-chan itf.RunnerResult) (err error) {
+func (s *PluginEventOutput) Ingest(c <-chan itf.RunnerResult) (err error) {
 	go func() {
 		for !s.stopped {
 			res := <-c
@@ -53,7 +34,7 @@ func (s *HTTPEventOutput) Ingest(c <-chan itf.RunnerResult) (err error) {
 	return
 }
 
-func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
+func (s *PluginEventOutput) send(result itf.RunnerResult) (err error) {
 	data, err := result.Data()
 	if err != nil {
 		err = fmt.Errorf("error getting data: %w", err)
@@ -128,7 +109,7 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 	return
 }
 
-func (s *HTTPEventOutput) Close() (err error) {
+func (s *PluginEventOutput) Close() (err error) {
 	s.stopped = true
 	return
 }

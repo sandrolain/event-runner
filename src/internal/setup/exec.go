@@ -6,10 +6,11 @@ import (
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
-	manager "github.com/sandrolain/event-runner/src/internal/plugins"
+	"github.com/sandrolain/event-runner/src/internal/plugins"
 	"github.com/sandrolain/event-runner/src/internal/runners/es5runner"
 	"github.com/sandrolain/event-runner/src/internal/sources/httpsource"
 	"github.com/sandrolain/event-runner/src/internal/sources/natssource"
+	"github.com/sandrolain/event-runner/src/internal/sources/pluginsource"
 )
 
 type Executor struct {
@@ -72,32 +73,12 @@ func Exec(cfg config.Config) (err error) {
 		return
 	}
 
-	for _, cfg := range cfg.Connections {
-		slog.Info("init connection", "id", cfg.ID)
-		c, e := NewConnection(cfg)
-		if e != nil {
-			err = fmt.Errorf("failed to create connection \"%s\": %w", cfg.ID, e)
-			return
-		}
-		exec.connections[cfg.ID] = c
-	}
-
-	for _, cfg := range cfg.Runners {
-		slog.Info("init runner", "id", cfg.ID, "concurrncy", cfg.Concurrency)
-		r, e := NewRunnerManager(cfg)
-		if e != nil {
-			err = fmt.Errorf("failed to create runner \"%s\": %w", cfg.ID, e)
-			return
-		}
-		exec.runnersManagers[cfg.ID] = r
-	}
-
-	var pluginManager *manager.PluginManager
+	var pluginManager *plugins.PluginManager
 
 	if len(cfg.Plugins) > 0 {
 		slog.Info("init plugins", "count", len(cfg.Plugins))
 
-		pluginManager, err = manager.NewPluginManager()
+		pluginManager, err = plugins.NewPluginManager()
 		if err != nil {
 			err = fmt.Errorf("failed to create plugin manager: %w", err)
 			return
@@ -122,6 +103,26 @@ func Exec(cfg config.Config) (err error) {
 				return
 			}
 		}
+	}
+
+	for _, cfg := range cfg.Connections {
+		slog.Info("init connection", "id", cfg.ID)
+		c, e := NewConnection(cfg, pluginManager)
+		if e != nil {
+			err = fmt.Errorf("failed to create connection \"%s\": %w", cfg.ID, e)
+			return
+		}
+		exec.connections[cfg.ID] = c
+	}
+
+	for _, cfg := range cfg.Runners {
+		slog.Info("init runner", "id", cfg.ID, "concurrncy", cfg.Concurrency)
+		r, e := NewRunnerManager(cfg)
+		if e != nil {
+			err = fmt.Errorf("failed to create runner \"%s\": %w", cfg.ID, e)
+			return
+		}
+		exec.runnersManagers[cfg.ID] = r
 	}
 
 	for _, cfg := range cfg.Lines {
@@ -189,7 +190,7 @@ func Exec(cfg config.Config) (err error) {
 			return
 		}
 
-		plList := make([]*manager.Plugin, 0)
+		plList := make([]*plugins.Plugin, 0)
 
 		if pluginManager != nil {
 			for _, pId := range cfg.PluginIDs {
@@ -202,7 +203,7 @@ func Exec(cfg config.Config) (err error) {
 			}
 		}
 
-		plugins := manager.NewEventPlugins(plList)
+		plugins := plugins.NewEventPlugins(plList)
 
 		slog.Info("create runner instance", "id", cfg.RunnerID)
 		run, e := runMan.New(cache, plugins)
@@ -229,12 +230,24 @@ func Exec(cfg config.Config) (err error) {
 	return
 }
 
-func NewConnection(cfg config.Connection) (res itf.EventConnection, err error) {
+func NewConnection(cfg config.Connection, manager *plugins.PluginManager) (res itf.EventConnection, err error) {
 	switch cfg.Type {
 	case "nats":
 		return natssource.NewConnection(cfg)
 	case "http":
 		return httpsource.NewConnection(cfg)
+	case "plugin":
+		if manager == nil {
+			err = fmt.Errorf("plugin manager is nil")
+			return
+		}
+
+		plugin, e := manager.GetPlugin(cfg.PluginID)
+		if e != nil {
+			err = fmt.Errorf("failed to get plugin: %w", e)
+			return
+		}
+		return pluginsource.NewConnection(cfg, plugins.NewEventPlugins([]*plugins.Plugin{plugin}))
 	}
 	err = fmt.Errorf("unknown connection type: %s", cfg.Type)
 	return

@@ -19,9 +19,10 @@ type Logger struct {
 
 type Connection struct {
 	ID       string `yaml:"id" json:"id" validate:"required"`
-	Type     string `yaml:"type" json:"type" validate:"required,oneof=nats redis http grpc"`
-	Hostname string `yaml:"hostname" json:"hostname" validate:"required"`
-	Port     int    `yaml:"port" json:"port" validate:"required"`
+	Type     string `yaml:"type" json:"type" validate:"required,oneof=nats redis kafka http grpc plugin"`
+	PluginID string `yaml:"plugin_id" json:"plugin_id" validate:"omitempty,required_if=Type plugin"`
+	Hostname string `yaml:"hostname" json:"hostname" validate:"omitempty,required,excluded_if=Type plugin"`
+	Port     int    `yaml:"port" json:"port" validate:"omitempty,required,excluded_if=Type plugin"`
 	Token    string `yaml:"token" json:"token"`
 	Username string `yaml:"username" json:"username"`
 	Password string `yaml:"password" json:"password"`

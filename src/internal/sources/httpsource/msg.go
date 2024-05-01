@@ -7,7 +7,6 @@ import (
 )
 
 type HttpEventMessage struct {
-	time    time.Time
 	httpCtx *fasthttp.RequestCtx
 }
 
@@ -33,7 +32,7 @@ func (m HttpEventMessage) DataString() (string, error) {
 }
 
 func (m HttpEventMessage) Time() (time.Time, error) {
-	return m.time, nil
+	return m.httpCtx.Time(), nil
 }
 
 func (m HttpEventMessage) Ack() error {

@@ -12,10 +12,17 @@ connections:
     type: http
     hostname: localhost
     port: 8888
+  - id: plugin
+    type: plugin
+    plugin_id: inputs
 inputs:
   - id: nats-input
     connection_id: nats
     topic: test.>
+    buffer: 32
+  - id: plugin-input
+    connection_id: plugin
+    topic: test.topic
     buffer: 32
 outputs:
   - id: http-output
@@ -35,9 +42,11 @@ caches:
 plugins:
   - id: pizzas
     exec: "./example/plugins/pizzas/pizzas"
+  - id: inputs
+    exec: "./example/plugins/inputs/inputs"
 lines:
   - id: nats-es5-http
-    input_id: nats-input
+    input_id: plugin-input
     runner_id: es5
     output_id: http-output
     cache_id: nats-cache

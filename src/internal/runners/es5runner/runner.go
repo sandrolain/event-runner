@@ -80,8 +80,9 @@ type ES5Runner struct {
 	stopped bool
 }
 
-func (r *ES5Runner) Ingest(c chan itf.EventMessage) (o chan itf.RunnerResult, err error) {
-	o = make(chan itf.RunnerResult, r.config.Buffer)
+func (r *ES5Runner) Ingest(c <-chan itf.EventMessage) (res <-chan itf.RunnerResult, err error) {
+	o := make(chan itf.RunnerResult, r.config.Buffer)
+	res = o
 
 	for i := 0; i < r.config.Concurrency; i++ {
 		go func() {

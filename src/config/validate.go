@@ -47,12 +47,27 @@ func Validate(cfg *Config) (err error) {
 		return
 	}
 
+	pluginIds := make(map[string]bool)
+	for _, p := range cfg.Plugins {
+		if pluginIds[p.ID] {
+			err = fmt.Errorf("duplicate plugin \"%s\"", p.ID)
+			return
+		}
+		pluginIds[p.ID] = true
+	}
+
 	connIds := make(map[string]bool)
 	for _, conn := range cfg.Connections {
 		if connIds[conn.ID] {
 			err = fmt.Errorf("duplicate connection \"%s\"", conn.ID)
 			return
 		}
+
+		if conn.Type == "plugin" && pluginIds[conn.PluginID] != true {
+			err = fmt.Errorf("plugin \"%s\" for connection \"%s\" not found", conn.PluginID, conn.ID)
+			return
+		}
+
 		connIds[conn.ID] = true
 	}
 
@@ -90,15 +105,6 @@ func Validate(cfg *Config) (err error) {
 			return
 		}
 		outputsIds[output.ID] = true
-	}
-
-	pluginIds := make(map[string]bool)
-	for _, p := range cfg.Plugins {
-		if pluginIds[p.ID] {
-			err = fmt.Errorf("duplicate plugin \"%s\"", p.ID)
-			return
-		}
-		pluginIds[p.ID] = true
 	}
 
 	for _, input := range cfg.Inputs {

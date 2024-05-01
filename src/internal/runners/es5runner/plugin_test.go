@@ -28,37 +28,19 @@ func NewPlugins(plugins map[string]itf.EventPlugin) *TestEventPlugins {
 }
 
 type TestEventPlugin struct {
-	Result itf.PluginResult
+	Result itf.PluginCommandResult
 }
 
-func (p *TestEventPlugin) Command(name string) (itf.PluginCommand, error) {
+func (p *TestEventPlugin) Command(name string, data any) (itf.PluginCommandResult, error) {
 	if p.Result.GetCommand() != name {
 		return nil, fmt.Errorf("command %s not found", name)
 	}
 
-	return &TestPluginCommand{
-		plugin: p,
-		Result: p.Result,
-	}, nil
-}
-
-type TestPluginCommand struct {
-	plugin *TestEventPlugin
-	data   any
-	Result itf.PluginResult
-}
-
-func (p *TestPluginCommand) SetData(data any) (err error) {
-	p.data = data
-	return
-}
-
-func (p *TestPluginCommand) Exec() (res itf.PluginResult, err error) {
 	return p.Result, nil
 }
 
-func (p *TestPluginCommand) GetData() any {
-	return p.data
+func (p *TestEventPlugin) Input(buffer int, config map[string]string) (<-chan itf.PluginInput, error) {
+	return nil, nil
 }
 
 type TestResult struct {
@@ -113,23 +95,16 @@ func TestPluginsWrapper(t *testing.T) {
 		plugin = plugins.Get("baz")
 	})
 
-	cmd, err := plugin1.Command("foo")
-	assert.Nil(t, err)
-
-	res, err := cmd.Exec()
+	res, err := plugin1.Command("foo", nil)
 	assert.Nil(t, err)
 	assert.Equal(t, plugin1.Result, res)
 
-	_, err = plugin1.Command("baz")
+	_, err = plugin1.Command("baz", nil)
 	assert.NotNil(t, err)
 
-	cmd, err = plugin2.Command("bar")
-	assert.Nil(t, err)
-
-	res, err = cmd.Exec()
-	assert.Nil(t, err)
+	res, err = plugin2.Command("bar", nil)
 	assert.Equal(t, plugin2.Result, res)
 
-	_, err = plugin2.Command("baz")
+	_, err = plugin2.Command("baz", nil)
 	assert.NotNil(t, err)
 }

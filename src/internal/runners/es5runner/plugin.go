@@ -28,15 +28,7 @@ type PluginWrapper struct {
 }
 
 func (p *PluginWrapper) Command(name string, data any) (res any, e error) {
-	c, e := p.plugin.Command(name)
-	if e != nil {
-		panic(p.vm.NewGoError(e))
-	}
-	e = c.SetData(data)
-	if e != nil {
-		panic(p.vm.NewGoError(e))
-	}
-	execRes, e := c.Exec()
+	execRes, e := p.plugin.Command(name, data)
 	if e != nil {
 		panic(p.vm.NewGoError(e))
 	}

@@ -6,7 +6,7 @@ type RunnerManager interface {
 }
 
 type Runner interface {
-	Ingest(chan EventMessage) (chan RunnerResult, error)
+	Ingest(<-chan EventMessage) (<-chan RunnerResult, error)
 	Stop() error
 }
 
