@@ -106,6 +106,7 @@ func (p *PluginManager) CreatePlugin(cfg config.Plugin) (res *Plugin, err error)
 		Env:       cfg.Env,
 		ConnRetry: cfg.Retry,
 		ConnDelay: delay,
+		Output:    cfg.Output,
 		slog:      p.slog.With("plugin", cfg.ID, "id", id),
 	}
 

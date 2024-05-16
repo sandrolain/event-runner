@@ -62,6 +62,7 @@ type Output struct {
 	ID           string `yaml:"id" json:"id" validate:"required"`
 	ConnectionID string `yaml:"connection_id" json:"connection_id" validate:"required"`
 	Topic        string `yaml:"topic" json:"topic" validate:"required"`
+	Marshal      string `yaml:"marshal" json:"marshal" default:"json" validate:"omitempty,oneof=json msgpack gob"`
 	Method       string `yaml:"method" json:"method" validate:"omitempty,oneof=POST PUT PATCH"` // HTTP
 	Hostname     string `yaml:"hostname" json:"hostname" validate:"omitempty"`                  // gRPC
 	Port         int    `yaml:"port" json:"port" validate:"omitempty,gte=0,lte=65535"`          // gRPC
@@ -85,4 +86,5 @@ type Plugin struct {
 	Delay   string   `yaml:"delay" json:"delay" default:"1s" validate:"omitempty,duration"`
 	Retry   int      `yaml:"retry" json:"retry" default:"3" validate:"omitempty,gt=0"`
 	Marshal string   `yaml:"marshal" json:"marshal" default:"msgpack" validate:"required,oneof=json msgpack gob"`
+	Output  bool     `yaml:"output" json:"output" default:"true"`
 }

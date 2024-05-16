@@ -1,8 +1,10 @@
 package plugins
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -26,6 +28,7 @@ type Plugin struct {
 	Args      []string
 	Env       []string
 	Config    config.Plugin
+	Output    bool
 	cmd       *exec.Cmd
 	conn      *grpc.ClientConn
 	client    proto.PluginServiceClient
@@ -47,12 +50,38 @@ func (p *Plugin) Start() (err error) {
 	env = append(env, fmt.Sprintf("CONN_DELAY=%s", p.ConnDelay))
 	env = append(env, fmt.Sprintf("MARSHAL=%s", p.Config.Marshal))
 	p.cmd.Env = env
-	p.cmd.Start()
+
+	var stdout io.ReadCloser
+
+	if p.Output {
+		stdout, err = p.cmd.StdoutPipe()
+		if err != nil {
+			slog.Error("Cannot get stdout pipe", "name", p.Name, "err", err)
+			return
+		}
+
+		go func() {
+			// print the output of the subprocess
+			scanner := bufio.NewScanner(stdout)
+			for !p.stopped && scanner.Scan() {
+				m := scanner.Text()
+				fmt.Printf(`[PLUGIN: %s] %s\n`, p.Name, m)
+			}
+		}()
+	}
+
+	err = p.cmd.Start()
+	if err != nil {
+		slog.Error("Cannot start plugin", "name", p.Name, "err", err)
+		p.Stop()
+		return
+	}
 
 	err = p.connect()
 	if err != nil {
 		slog.Error("Cannot connect to plugin", "name", p.Name, "err", err, "retries", p.ConnRetry, "delay", p.ConnDelay)
 		p.Stop()
+		return
 	}
 
 	go p.startCheckStatus()

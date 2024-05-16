@@ -45,7 +45,7 @@ func (s *server) Input(req *proto.InputReq, stream proto.PluginService_InputServ
 		}
 	}
 
-	timer := time.NewTicker(500 * time.Microsecond)
+	timer := time.NewTicker(time.Second)
 
 	for {
 		select {

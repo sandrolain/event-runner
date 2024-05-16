@@ -13,6 +13,7 @@ type EventPlugins interface {
 type EventPlugin interface {
 	Command(key string, data any) (PluginCommandResult, error)
 	Input(buffer int, config map[string]string) (<-chan PluginInput, error)
+	Output(uuid string, topic string, data []byte, metadata map[string][]string) error
 }
 
 type PluginCommandResult interface {

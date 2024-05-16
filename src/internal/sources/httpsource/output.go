@@ -1,7 +1,6 @@
 package httpsource
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
+	"github.com/sandrolain/event-runner/src/internal/utils"
 	"github.com/valyala/fasthttp"
 )
 
@@ -66,12 +66,20 @@ func (s *HTTPEventOutput) send(result itf.RunnerResult) (err error) {
 		return
 	}
 
-	// TODO: check data conversion
-	// TODO: marshal from config
-	serData, err := json.Marshal(data)
-	if err != nil {
-		err = fmt.Errorf("error serializing data: %w", err)
-		return
+	var serData []byte
+	if s.config.Marshal == "" {
+		var ok bool
+		serData, ok = data.([]byte)
+		if !ok {
+			err = fmt.Errorf("error casting data: %w", err)
+			return
+		}
+	} else {
+		serData, err = utils.Marshal(s.config.Marshal, data)
+		if err != nil {
+			err = fmt.Errorf("error serializing data: %w", err)
+			return
+		}
 	}
 
 	method := strings.ToUpper(s.config.Method)

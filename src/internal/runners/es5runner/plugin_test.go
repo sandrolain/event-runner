@@ -43,6 +43,10 @@ func (p *TestEventPlugin) Input(buffer int, config map[string]string) (<-chan it
 	return nil, nil
 }
 
+func (p *TestEventPlugin) Output(uuid string, topic string, data []byte, metadata map[string][]string) error {
+	return nil
+}
+
 type TestResult struct {
 	Command string
 	UUID    string

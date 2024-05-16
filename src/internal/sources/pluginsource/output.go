@@ -1,21 +1,19 @@
 package pluginsource
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/sandrolain/event-runner/src/config"
 	"github.com/sandrolain/event-runner/src/internal/itf"
-	"github.com/valyala/fasthttp"
+	"github.com/sandrolain/event-runner/src/internal/utils"
 )
 
 type PluginEventOutput struct {
-	slog    *slog.Logger
-	config  config.Output
-	stopped bool
-	client  *fasthttp.Client
+	connection *PluginEventConnection
+	slog       *slog.Logger
+	config     config.Output
+	stopped    bool
 }
 
 func (s *PluginEventOutput) Ingest(c <-chan itf.RunnerResult) (err error) {
@@ -47,64 +45,43 @@ func (s *PluginEventOutput) send(result itf.RunnerResult) (err error) {
 		return
 	}
 
-	// TODO: check data conversion
-	// TODO: marshal from config
-	serData, err := json.Marshal(data)
-	if err != nil {
-		err = fmt.Errorf("error serializing data: %w", err)
-		return
+	var serData []byte
+	if s.config.Marshal == "" {
+		var ok bool
+		serData, ok = data.([]byte)
+		if !ok {
+			err = fmt.Errorf("error casting data: %w", err)
+			return
+		}
+	} else {
+		serData, err = utils.Marshal(s.config.Marshal, data)
+		if err != nil {
+			err = fmt.Errorf("error serializing data: %w", err)
+			return
+		}
 	}
 
-	method := strings.ToUpper(s.config.Method)
-	if cfg["method"] != "" {
-		method = strings.ToUpper(cfg["method"])
-	}
-	if method == "" {
-		method = "POST"
+	var uuid string
+	if u, ok := cfg["uuid"]; ok && u != "" {
+		uuid = cfg["uuid"]
 	}
 
-	url := s.config.Topic
-	if cfg["topic"] != "" {
-		url = cfg["topic"]
+	topic := s.config.Topic
+	if t, ok := cfg["topic"]; ok && t != "" {
+		topic = t
 	}
-
-	s.slog.Debug("publishing", "method", method, "url", url, "size", len(serData))
-
-	req := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(req)
-
-	req.Header.SetMethod(method)
-	req.Header.Set("Content-Type", "application/json")
-	req.SetRequestURI(url)
-	req.SetBody(serData)
 
 	meta, err := result.Metadata()
-
 	if err != nil {
 		err = fmt.Errorf("error getting metadata: %w", err)
 		return
 	}
-	for k, v := range meta {
-		for _, vv := range v {
-			req.Header.Add(k, vv)
-		}
-	}
 
-	res := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(res)
-
-	err = s.client.Do(req, res)
-	if err != nil {
-		err = fmt.Errorf("error sending request: %w", err)
+	e := s.connection.plugin.Output(uuid, topic, serData, meta)
+	if e != nil {
+		err = fmt.Errorf("error sending data: %w", e)
 		return
 	}
-
-	if res.StatusCode() > 299 {
-		err = fmt.Errorf("non-2XX status code: %d", res.StatusCode())
-		return
-	}
-
-	s.slog.Debug("published", "status", res.StatusCode())
 
 	return
 }

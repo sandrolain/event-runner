@@ -47,8 +47,9 @@ func (c *PluginEventConnection) NewInput(cfg config.Input) (res itf.EventInput, 
 
 func (c *PluginEventConnection) NewOutput(cfg config.Output) (res itf.EventOutput, err error) {
 	res = &PluginEventOutput{
-		config: cfg,
-		slog:   c.slog,
+		connection: c,
+		config:     cfg,
+		slog:       c.slog,
 	}
 	return
 }
